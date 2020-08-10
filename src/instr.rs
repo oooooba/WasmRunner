@@ -1,0 +1,126 @@
+use std::rc::Rc;
+
+use crate::module::*;
+use crate::types::*;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Blocktype {
+    Empty,
+    Valtype(Valtype),
+    S33(Typeidx),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum UnopKind {
+    Ctz,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BinopKind {
+    Add,
+    Sub,
+    Mul,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TestopKind {
+    Eqz,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RelopKind {
+    Eq,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TerminatorKind {
+    End,
+    Else,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum InstrKind {
+    ConstI32(u32),
+    ConstI64(u64),
+    UnopI32(UnopKind),
+    UnopI64(UnopKind),
+    BinopI32(BinopKind),
+    TestopI32(TestopKind),
+    RelopI32(RelopKind),
+
+    Drop,
+    Select,
+
+    GetLocal(Localidx),
+    SetLocal(Localidx),
+
+    Nop,
+    Unreachable,
+    Block(Blocktype, InstrSeq),
+    Loop(Blocktype, InstrSeq),
+    If(Blocktype, InstrSeq, InstrSeq),
+    Br(Labelidx),
+    BrIf(Labelidx),
+    BrTable(Vec<Labelidx>, Labelidx),
+    Return,
+    Call(Funcidx),
+    CallIndirect(Typeidx),
+
+    Terminator(TerminatorKind),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Instr {
+    pub kind: InstrKind,
+}
+
+impl Instr {
+    pub fn new(kind: InstrKind) -> Self {
+        Self { kind }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct InstrSeqInner {
+    instr_seq: Vec<Instr>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct InstrSeq(Rc<InstrSeqInner>);
+
+impl InstrSeq {
+    pub fn new(instr_seq: Vec<Instr>) -> Self {
+        Self(Rc::new(InstrSeqInner { instr_seq }))
+    }
+
+    pub fn new_empty() -> Self {
+        Self::new(Vec::new())
+    }
+
+    pub fn make_clone(&self) -> Self {
+        Self(Rc::clone(&self.0))
+    }
+
+    pub fn instr_seq(&self) -> &Vec<Instr> {
+        &self.0.instr_seq
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Expr {
+    instr_seq: InstrSeq,
+}
+
+impl Expr {
+    pub fn new(instr_seq: InstrSeq) -> Self {
+        Self { instr_seq }
+    }
+
+    pub fn make_clone(&self) -> Self {
+        Self::new(self.instr_seq.make_clone())
+    }
+
+    pub fn instr_seq(&self) -> &InstrSeq {
+        &self.instr_seq
+    }
+}
