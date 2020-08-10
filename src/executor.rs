@@ -268,7 +268,6 @@ enum Control {
     Fallthrough,
     Branch(usize),
     Return,
-    Unwind,
 }
 
 fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> {
@@ -300,7 +299,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 BinopKind::Add => c1.wrapping_add(c2),
                 BinopKind::Sub => c1.wrapping_sub(c2),
                 BinopKind::Mul => c1.wrapping_mul(c2),
-                BinopKind::UDiv => c1 / c2,
+                BinopKind::UDiv => {
+                    if c2 != 0 {
+                        c1 / c2
+                    } else {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                }
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
@@ -343,7 +348,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         }
 
         Nop => Ok(Fallthrough),
-        Unreachable => Ok(Unwind),
+        Unreachable => Err(ExecutionError::ExplicitTrap),
         Block(blocktype, instr_seq) => {
             let arity = ctx
                 .current_frame()
@@ -556,7 +561,6 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<Control, Executi
         Control::Branch(_) => unreachable!(),
         Control::Fallthrough => Control::Fallthrough,
         Control::Return => Control::Fallthrough,
-        Control::Unwind => return Ok(Control::Unwind),
     };
 
     let mut result = Vec::new();
@@ -598,7 +602,6 @@ pub fn invoke(
         Control::Branch(_) => unreachable!(),
         Control::Fallthrough => (),
         Control::Return => unreachable!(),
-        Control::Unwind => return Ok(WasmRunnerResult::Trap),
     };
 
     let mut result_values = Vec::new();
@@ -631,6 +634,8 @@ pub enum ExecutionError {
         index: usize,
         detail: &'static str,
     },
+    ExplicitTrap,
+    ZeroDivision,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -659,6 +664,8 @@ impl fmt::Display for ExecutionError {
                 "OutOfRangeAccess: {}, size {}, index {}",
                 detail, size, index
             ),
+            ExplicitTrap => write!(f, "ExplicitTrap:"),
+            ZeroDivision => write!(f, "ZeroDivision:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }

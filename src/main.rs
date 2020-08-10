@@ -10,7 +10,7 @@ use std::env;
 use std::fs;
 
 use decoder::Decoder;
-use executor::{instantiate, invoke};
+use executor::{instantiate, invoke, ExecutionError};
 use module::Name;
 use value::{Value, ValueKind, WasmRunnerResult};
 
@@ -80,6 +80,39 @@ fn run_test(module_file_name: &str) {
                 let res = invoke(&mut ctx, funcaddr, arguments).unwrap();
                 println!("{}: result = {:?}", func_name, res);
                 assert_eq!(res, WasmRunnerResult::Values(expected_result));
+            }
+            AssertTrap { exec, message, .. } => {
+                let (func_name, arguments) = match exec {
+                    WastExecute::Invoke(WastInvoke { name, args, .. }) => (
+                        name,
+                        args.into_iter()
+                            .map(|arg| {
+                                assert_eq!(arg.instrs.len(), 1);
+                                use Instruction::*;
+                                let value_kind = match arg.instrs[0] {
+                                    I32Const(x) => ValueKind::I32(x as u32),
+                                    I64Const(x) => ValueKind::I64(x as u64),
+                                    _ => unimplemented!(),
+                                };
+                                Value::new(value_kind)
+                            })
+                            .collect::<Vec<Value>>(),
+                    ),
+                    _ => unimplemented!(),
+                };
+                let expected_trap = match message {
+                    "integer divide by zero" => ExecutionError::ZeroDivision,
+                    _ => unimplemented!(),
+                };
+
+                let module = current_module.as_ref().unwrap();
+                let (moduleinst, mut ctx) = instantiate(module).unwrap();
+                let funcaddr = moduleinst
+                    .find_funcaddr(&Name::new(func_name.to_string()))
+                    .unwrap();
+                let res = invoke(&mut ctx, funcaddr, arguments).unwrap_err();
+                println!("{}: trap = {:?}", func_name, res);
+                assert_eq!(res, expected_trap);
             }
             _ => (),
         }

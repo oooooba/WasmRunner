@@ -31,5 +31,4 @@ impl Value {
 #[derive(Debug, PartialEq, Eq)]
 pub enum WasmRunnerResult {
     Values(Vec<Value>),
-    Trap,
 }
