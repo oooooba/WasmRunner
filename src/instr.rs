@@ -20,6 +20,7 @@ pub enum BinopKind {
     Add,
     Sub,
     Mul,
+    UDiv,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

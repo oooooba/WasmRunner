@@ -300,6 +300,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 BinopKind::Add => c1.wrapping_add(c2),
                 BinopKind::Sub => c1.wrapping_sub(c2),
                 BinopKind::Mul => c1.wrapping_mul(c2),
+                BinopKind::UDiv => c1 / c2,
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
