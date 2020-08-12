@@ -43,6 +43,10 @@ impl Module {
         &self.funcs
     }
 
+    pub fn tables(&self) -> &Vec<Table> {
+        &self.tables
+    }
+
     pub fn exports(&self) -> &Vec<Export> {
         &self.exports
     }
@@ -116,6 +120,10 @@ pub struct Table {
 impl Table {
     pub fn new(typ: Tabletype) -> Self {
         Self { typ }
+    }
+
+    pub fn typ(&self) -> &Tabletype {
+        &self.typ
     }
 }
 

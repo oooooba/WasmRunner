@@ -64,6 +64,14 @@ impl Limit {
     pub fn new(min: usize, max: Option<usize>) -> Self {
         Self { min, max }
     }
+
+    pub fn min(&self) -> usize {
+        self.min
+    }
+
+    pub fn max(&self) -> &Option<usize> {
+        &self.max
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,6 +94,10 @@ pub struct Tabletype {
 impl Tabletype {
     pub fn new(limit: Limit, elemtype: Elemtype) -> Self {
         Self { limit, elemtype }
+    }
+
+    pub fn limit(&self) -> &Limit {
+        &self.limit
     }
 }
 

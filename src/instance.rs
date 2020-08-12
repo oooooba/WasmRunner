@@ -52,6 +52,14 @@ impl Store {
         Ok(addr)
     }
 
+    fn alloctable(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
+        let addr = Tableaddr(Address(self.tables.len()));
+        let elem = vec![None; tabletype.limit().min()];
+        let tableinst = Tableinst::new(elem, tabletype.limit().max().clone());
+        self.tables.push(tableinst);
+        Ok(addr)
+    }
+
     fn allocmodule(&mut self, module: &Module) -> Result<Moduleinst, ExecutionError> {
         let mut moduleinst = Moduleinst::new();
 
@@ -61,6 +69,12 @@ impl Store {
         for func in module.funcs() {
             let addr = self.allocfunc(func.make_clone(), moduleinst.make_clone(), module)?;
             funcaddrs.push(addr);
+        }
+
+        let mut tableaddrs = Vec::new();
+        for table in module.tables() {
+            let addr = self.alloctable(table.typ())?;
+            tableaddrs.push(addr);
         }
 
         let funcaddrs_mod = funcaddrs; // @todo concatenate with externals
@@ -205,7 +219,13 @@ impl Funcinst {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tableinst {
     elem: Vec<Option<Funcaddr>>,
-    max: Option<u32>,
+    max: Option<usize>,
+}
+
+impl Tableinst {
+    pub fn new(elem: Vec<Option<Funcaddr>>, max: Option<usize>) -> Self {
+        Self { elem, max }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
