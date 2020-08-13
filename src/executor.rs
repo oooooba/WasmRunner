@@ -487,7 +487,51 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
 pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionError> {
     let mut ctx = Context::new();
     let moduleinst = ctx.store.instantiate(module)?;
+
+    // @todo push Frame
+
+    let mut offsets = Vec::new();
+    for elem in module.elems() {
+        let eoval = eval(&mut ctx, elem.offset())?;
+        let eo = match eoval.kind() {
+            ValueKind::I32(n) => n as usize,
+            _ => unimplemented!(), // @todo raise Error
+        };
+
+        let tableidx = elem.table();
+        let tableaddr = moduleinst.resolve_tableaddr(tableidx)?;
+        let tableinst = &ctx.store.tables()[tableaddr.to_usize()];
+
+        let eend = eo + elem.init().len();
+        if eend > tableinst.elem().len() {
+            unimplemented!() // @todo raise Error
+        }
+
+        offsets.push(eo);
+    }
+
+    // @todo pop Frame
+
+    for (i, (elem, eo)) in module.elems().iter().zip(offsets.iter()).enumerate() {
+        let tableinst = &mut ctx.store.tables_mut()[i];
+        for (j, funcidx) in elem.init().iter().enumerate() {
+            let funcaddr = moduleinst.resolve_funcaddr(*funcidx)?;
+            tableinst.elem_mut()[eo + j] = Some(funcaddr);
+        }
+    }
+
     Ok((moduleinst, ctx))
+}
+
+fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
+    let label = Label::new(1);
+    let ctrl = execute_instr_seq(ctx, expr.instr_seq(), label)?;
+    match ctrl {
+        Control::Branch(_) => unreachable!(),
+        Control::Fallthrough => (),
+        Control::Return => (),
+    };
+    ctx.stack_mut().pop_value()
 }
 
 fn execute_instr_seq(

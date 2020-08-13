@@ -50,6 +50,10 @@ impl Module {
     pub fn exports(&self) -> &Vec<Export> {
         &self.exports
     }
+
+    pub fn elems(&self) -> &Vec<Elem> {
+        &self.elems
+    }
 }
 
 #[allow(unused_macros)]
@@ -189,6 +193,18 @@ impl Elem {
             offset,
             init,
         }
+    }
+
+    pub fn table(&self) -> Tableidx {
+        self.table
+    }
+
+    pub fn offset(&self) -> &Expr {
+        &self.offset
+    }
+
+    pub fn init(&self) -> &Vec<Funcidx> {
+        &self.init
     }
 }
 

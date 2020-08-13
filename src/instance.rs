@@ -32,6 +32,14 @@ impl Store {
         &self.funcs
     }
 
+    pub fn tables(&self) -> &Vec<Tableinst> {
+        &self.tables
+    }
+
+    pub fn tables_mut(&mut self) -> &mut Vec<Tableinst> {
+        &mut self.tables
+    }
+
     fn allocfunc(
         &mut self,
         func: Func,
@@ -179,6 +187,11 @@ impl Moduleinst {
         Ok(self.0.borrow().funcaddrs[funcidx.to_usize()].clone())
     }
 
+    pub fn resolve_tableaddr(&self, tableidx: Tableidx) -> Result<Tableaddr, ExecutionError> {
+        // @todo check index
+        Ok(self.0.borrow().tableaddrs[tableidx.to_usize()].clone())
+    }
+
     pub fn resolve_type(&self, typeidx: Typeidx) -> Result<Functype, ExecutionError> {
         // @todo check index
         Ok(self.0.borrow().types[typeidx.to_usize()].make_clone())
@@ -232,6 +245,14 @@ pub struct Tableinst {
 impl Tableinst {
     pub fn new(elem: Vec<Option<Funcaddr>>, max: Option<usize>) -> Self {
         Self { elem, max }
+    }
+
+    pub fn elem(&self) -> &Vec<Option<Funcaddr>> {
+        &self.elem
+    }
+
+    pub fn elem_mut(&mut self) -> &mut Vec<Option<Funcaddr>> {
+        &mut self.elem
     }
 }
 
