@@ -79,6 +79,8 @@ impl Store {
 
         let funcaddrs_mod = funcaddrs; // @todo concatenate with externals
 
+        let tableaddrs_mod = tableaddrs; // @todo concatenate with externals
+
         let mut exports = Vec::new();
         for export in module.exports() {
             use Exportdesc::*;
@@ -92,6 +94,7 @@ impl Store {
 
         moduleinst.update_types(types);
         moduleinst.update_funcaddrs(funcaddrs_mod);
+        moduleinst.update_tableaddrs(tableaddrs_mod);
         moduleinst.update_exports(exports);
 
         Ok(moduleinst)
@@ -161,6 +164,10 @@ impl Moduleinst {
 
     fn update_funcaddrs(&mut self, funcaddrs: Vec<Funcaddr>) {
         self.0.borrow_mut().funcaddrs = funcaddrs;
+    }
+
+    fn update_tableaddrs(&mut self, tableaddrs: Vec<Tableaddr>) {
+        self.0.borrow_mut().tableaddrs = tableaddrs;
     }
 
     fn update_exports(&mut self, exports: Vec<Exportinst>) {
