@@ -36,6 +36,24 @@ impl Frame {
         }
     }
 
+    pub fn resolve_tableaddr(&self, tableidx: Tableidx) -> Result<Tableaddr, ExecutionError> {
+        match self.0.borrow().module.as_ref() {
+            Some(moduleinst) => moduleinst.resolve_tableaddr(tableidx),
+            None => Err(ExecutionError::ExecutorStateInconsistency(
+                "module instance is not created",
+            )),
+        }
+    }
+
+    pub fn resolve_type(&self, typeidx: Typeidx) -> Result<Functype, ExecutionError> {
+        match self.0.borrow().module.as_ref() {
+            Some(moduleinst) => moduleinst.resolve_type(typeidx),
+            None => Err(ExecutionError::ExecutorStateInconsistency(
+                "module instance is not created",
+            )),
+        }
+    }
+
     pub fn num_result(&self) -> usize {
         self.0.borrow().num_result
     }
@@ -441,6 +459,24 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         }
         Call(funcidx) => {
             let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
+            invoke_func(ctx, funcaddr).map(|_| Fallthrough)
+        }
+        CallIndirect(typeidx) => {
+            let tableaddr = ctx.current_frame().resolve_tableaddr(Tableidx::new(0))?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let tableinst = &ctx.store.tables()[tableaddr.to_usize()];
+            if i >= tableinst.elem().len() {
+                unimplemented!() // @todo raise Error
+            }
+            let typ = &ctx.current_frame().resolve_type(*typeidx)?;
+            if tableinst.elem()[i].is_none() {
+                unimplemented!() // @todo raise Error
+            }
+            let funcaddr = tableinst.elem()[i].unwrap();
+            let f = &ctx.store.funcs()[funcaddr.to_usize()];
+            if typ != f.typ() {
+                unimplemented!() // @todo raise Error
+            }
             invoke_func(ctx, funcaddr).map(|_| Fallthrough)
         }
 
