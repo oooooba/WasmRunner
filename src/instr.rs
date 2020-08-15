@@ -72,6 +72,7 @@ pub enum InstrKind {
     SetLocal(Localidx),
 
     StoreI32(Memarg),
+    Grow,
 
     Nop,
     Unreachable,

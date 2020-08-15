@@ -8,6 +8,8 @@ use crate::module::*;
 use crate::types::*;
 use crate::value::*;
 
+pub const PAGE_SIZE: usize = 64 * 1024;
+
 #[derive(Debug, PartialEq, Eq)]
 struct FrameInner {
     locals: Vec<Value>,
@@ -381,6 +383,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let ea = (memarg.offset() as usize) + i;
             let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
             meminst.write_i32(ea, c).map(|_| Fallthrough)
+        }
+        Grow => {
+            let n = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            let result = meminst.grow(n)?.unwrap_or(u32::MAX);
+            ctx.stack_mut().push_i32(result).map(|_| Fallthrough)
         }
 
         Nop => Ok(Fallthrough),

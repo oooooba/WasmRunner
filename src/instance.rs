@@ -76,7 +76,7 @@ impl Store {
         let addr = Memaddr(Address(self.mems.len()));
         let n = memtype.limit().min() as usize;
         let m = memtype.limit().max().clone();
-        let data = vec![0u8; n * 64 * 1024];
+        let data = vec![0u8; n * PAGE_SIZE];
         let meminst = Meminst::new(data, m);
         self.mems.push(meminst);
         Ok(addr)
@@ -308,6 +308,26 @@ impl Meminst {
             self.data[index + i] = b;
         }
         Ok(())
+    }
+
+    pub fn grow(&mut self, page_size: usize) -> Result<Option<u32>, ExecutionError> {
+        if self.data.len() % PAGE_SIZE != 0 {
+            unimplemented!() // @todo raise Error
+        }
+        let sz = self.data.len() / PAGE_SIZE;
+        let len = sz + page_size;
+        if len > 2usize.pow(16) {
+            return Ok(None);
+        }
+        if let Some(max) = self.max {
+            if (max as usize) < len {
+                return Ok(None);
+            }
+        }
+        for _ in 0..(PAGE_SIZE * len) {
+            self.data.push(0);
+        }
+        Ok(Some(sz as u32))
     }
 }
 
