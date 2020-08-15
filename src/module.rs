@@ -47,6 +47,10 @@ impl Module {
         &self.tables
     }
 
+    pub fn mems(&self) -> &Vec<Mem> {
+        &self.mems
+    }
+
     pub fn exports(&self) -> &Vec<Export> {
         &self.exports
     }
@@ -139,6 +143,10 @@ pub struct Mem {
 impl Mem {
     pub fn new(typ: Memtype) -> Self {
         Self { typ }
+    }
+
+    pub fn typ(&self) -> &Memtype {
+        &self.typ
     }
 }
 

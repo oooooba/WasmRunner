@@ -68,6 +68,16 @@ impl Store {
         Ok(addr)
     }
 
+    fn allocmem(&mut self, memtype: &Memtype) -> Result<Memaddr, ExecutionError> {
+        let addr = Memaddr(Address(self.mems.len()));
+        let n = memtype.limit().min() as usize;
+        let m = memtype.limit().max().clone();
+        let data = vec![0u8; n * 64 * 1024];
+        let meminst = Meminst::new(data, m);
+        self.mems.push(meminst);
+        Ok(addr)
+    }
+
     fn allocmodule(&mut self, module: &Module) -> Result<Moduleinst, ExecutionError> {
         let mut moduleinst = Moduleinst::new();
 
@@ -85,9 +95,17 @@ impl Store {
             tableaddrs.push(addr);
         }
 
+        let mut memaddrs = Vec::new();
+        for mem in module.mems() {
+            let addr = self.allocmem(mem.typ())?;
+            memaddrs.push(addr);
+        }
+
         let funcaddrs_mod = funcaddrs; // @todo concatenate with externals
 
         let tableaddrs_mod = tableaddrs; // @todo concatenate with externals
+
+        let memaddrs_mod = memaddrs; // @todo concatenate with externals
 
         let mut exports = Vec::new();
         for export in module.exports() {
@@ -103,6 +121,7 @@ impl Store {
         moduleinst.update_types(types);
         moduleinst.update_funcaddrs(funcaddrs_mod);
         moduleinst.update_tableaddrs(tableaddrs_mod);
+        moduleinst.update_memaddrs(memaddrs_mod);
         moduleinst.update_exports(exports);
 
         Ok(moduleinst)
@@ -176,6 +195,10 @@ impl Moduleinst {
 
     fn update_tableaddrs(&mut self, tableaddrs: Vec<Tableaddr>) {
         self.0.borrow_mut().tableaddrs = tableaddrs;
+    }
+
+    fn update_memaddrs(&mut self, memaddrs: Vec<Memaddr>) {
+        self.0.borrow_mut().memaddrs = memaddrs;
     }
 
     fn update_exports(&mut self, exports: Vec<Exportinst>) {
@@ -260,6 +283,12 @@ impl Tableinst {
 pub struct Meminst {
     data: Vec<u8>,
     max: Option<u32>,
+}
+
+impl Meminst {
+    pub fn new(data: Vec<u8>, max: Option<u32>) -> Self {
+        Self { data, max }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

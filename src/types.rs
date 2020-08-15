@@ -83,6 +83,10 @@ impl Memtype {
     pub fn new(limit: Limit) -> Self {
         Self { limit }
     }
+
+    pub fn limit(&self) -> &Limit {
+        &self.limit
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
