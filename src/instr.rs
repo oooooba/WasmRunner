@@ -33,6 +33,18 @@ pub enum RelopKind {
     Eq,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct Memarg {
+    offset: u32,
+    align: u32,
+}
+
+impl Memarg {
+    pub fn new(offset: u32, align: u32) -> Self {
+        Self { offset, align }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TerminatorKind {
     End,
@@ -54,6 +66,8 @@ pub enum InstrKind {
 
     GetLocal(Localidx),
     SetLocal(Localidx),
+
+    StoreI32(Memarg),
 
     Nop,
     Unreachable,
