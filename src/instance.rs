@@ -300,14 +300,12 @@ impl Meminst {
     }
 
     pub fn write_i32(&mut self, index: usize, value: u32) -> Result<(), ExecutionError> {
-        if index + 32 / 8 > self.data.len() {
+        let bs = value.to_le_bytes();
+        if index + bs.len() > self.data.len() {
             unimplemented!() // @todo raise Error
         }
-        let mut value = value;
-        for i in 0..(32 / 8) {
-            let b = (value & 0xFF) as u8;
+        for (i, &b) in bs.iter().enumerate() {
             self.data[index + i] = b;
-            value = value >> 8;
         }
         Ok(())
     }
