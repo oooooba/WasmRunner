@@ -43,6 +43,10 @@ impl Memarg {
     pub fn new(offset: u32, align: u32) -> Self {
         Self { offset, align }
     }
+
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -45,6 +45,15 @@ impl Frame {
         }
     }
 
+    pub fn resolve_memaddr(&self, memidx: Memidx) -> Result<Memaddr, ExecutionError> {
+        match self.0.borrow().module.as_ref() {
+            Some(moduleinst) => moduleinst.resolve_memaddr(memidx),
+            None => Err(ExecutionError::ExecutorStateInconsistency(
+                "module instance is not created",
+            )),
+        }
+    }
+
     pub fn resolve_type(&self, typeidx: Typeidx) -> Result<Functype, ExecutionError> {
         match self.0.borrow().module.as_ref() {
             Some(moduleinst) => moduleinst.resolve_type(typeidx),
@@ -363,6 +372,15 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         SetLocal(idx) => {
             let v = ctx.stack_mut().pop_value()?;
             ctx.current_frame_mut().set(*idx, v).map(|_| Fallthrough)
+        }
+
+        StoreI32(memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let c = ctx.stack_mut().pop_i32()?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            meminst.write_i32(ea, c).map(|_| Fallthrough)
         }
 
         Nop => Ok(Fallthrough),

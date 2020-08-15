@@ -40,6 +40,10 @@ impl Store {
         &mut self.tables
     }
 
+    pub fn mems_mut(&mut self) -> &mut Vec<Meminst> {
+        &mut self.mems
+    }
+
     fn allocfunc(
         &mut self,
         func: Func,
@@ -215,6 +219,11 @@ impl Moduleinst {
         Ok(self.0.borrow().tableaddrs[tableidx.to_usize()].clone())
     }
 
+    pub fn resolve_memaddr(&self, memidx: Memidx) -> Result<Memaddr, ExecutionError> {
+        // @todo check index
+        Ok(self.0.borrow().memaddrs[memidx.to_usize()].clone())
+    }
+
     pub fn resolve_type(&self, typeidx: Typeidx) -> Result<Functype, ExecutionError> {
         // @todo check index
         Ok(self.0.borrow().types[typeidx.to_usize()].make_clone())
@@ -288,6 +297,19 @@ pub struct Meminst {
 impl Meminst {
     pub fn new(data: Vec<u8>, max: Option<u32>) -> Self {
         Self { data, max }
+    }
+
+    pub fn write_i32(&mut self, index: usize, value: u32) -> Result<(), ExecutionError> {
+        if index + 32 / 8 > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        let mut value = value;
+        for i in 0..(32 / 8) {
+            let b = (value & 0xFF) as u8;
+            self.data[index + i] = b;
+            value = value >> 8;
+        }
+        Ok(())
     }
 }
 
