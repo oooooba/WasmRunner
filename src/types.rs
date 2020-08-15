@@ -56,20 +56,20 @@ impl Functype {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Limit {
-    min: usize,
-    max: Option<usize>,
+    min: u32,
+    max: Option<u32>,
 }
 
 impl Limit {
-    pub fn new(min: usize, max: Option<usize>) -> Self {
+    pub fn new(min: u32, max: Option<u32>) -> Self {
         Self { min, max }
     }
 
-    pub fn min(&self) -> usize {
+    pub fn min(&self) -> u32 {
         self.min
     }
 
-    pub fn max(&self) -> &Option<usize> {
+    pub fn max(&self) -> &Option<u32> {
         &self.max
     }
 }

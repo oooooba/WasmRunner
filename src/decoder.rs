@@ -120,7 +120,7 @@ fn decode_limit<R: Read>(reader: &mut R) -> Result<Limit, DecodeError> {
             return Err(DecodeError::UnknownLimit(b));
         }
     };
-    Ok(Limit::new(min as usize, max.map(|m| m as usize)))
+    Ok(Limit::new(min, max))
 }
 
 fn decode_memtype<R: Read>(reader: &mut R) -> Result<Memtype, DecodeError> {

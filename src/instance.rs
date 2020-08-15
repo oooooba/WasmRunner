@@ -62,7 +62,7 @@ impl Store {
 
     fn alloctable(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
         let addr = Tableaddr(Address(self.tables.len()));
-        let elem = vec![None; tabletype.limit().min()];
+        let elem = vec![None; tabletype.limit().min() as usize];
         let tableinst = Tableinst::new(elem, tabletype.limit().max().clone());
         self.tables.push(tableinst);
         Ok(addr)
@@ -239,11 +239,11 @@ impl Funcinst {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tableinst {
     elem: Vec<Option<Funcaddr>>,
-    max: Option<usize>,
+    max: Option<u32>,
 }
 
 impl Tableinst {
-    pub fn new(elem: Vec<Option<Funcaddr>>, max: Option<usize>) -> Self {
+    pub fn new(elem: Vec<Option<Funcaddr>>, max: Option<u32>) -> Self {
         Self { elem, max }
     }
 
