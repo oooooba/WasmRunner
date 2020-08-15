@@ -70,6 +70,7 @@ pub enum InstrKind {
 
     GetLocal(Localidx),
     SetLocal(Localidx),
+    TeeLocal(Localidx),
 
     StoreI32(Memarg),
     Grow,

@@ -375,6 +375,11 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let v = ctx.stack_mut().pop_value()?;
             ctx.current_frame_mut().set(*idx, v).map(|_| Fallthrough)
         }
+        TeeLocal(idx) => {
+            let v = ctx.stack_mut().pop_value()?;
+            ctx.stack_mut().push_value(v).map(|_| Fallthrough)?;
+            ctx.current_frame_mut().set(*idx, v).map(|_| Fallthrough)
+        }
 
         StoreI32(memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;

@@ -256,6 +256,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
 
         0x20 => Ok(Instr::new(GetLocal(decode_localidx(reader)?))),
         0x21 => Ok(Instr::new(SetLocal(decode_localidx(reader)?))),
+        0x22 => Ok(Instr::new(TeeLocal(decode_localidx(reader)?))),
 
         0x36 => Ok(Instr::new(StoreI32(decode_memarg(reader)?))),
         0x40 => {
