@@ -120,6 +120,10 @@ impl Globaltype {
     pub fn new(typ: Valtype, mutability: Mutability) -> Self {
         Self { typ, mutability }
     }
+
+    pub fn mutability(&self) -> &Mutability {
+        &self.mutability
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

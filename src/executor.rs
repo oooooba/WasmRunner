@@ -554,7 +554,14 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
 
 pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionError> {
     let mut ctx = Context::new();
-    let moduleinst = ctx.store.instantiate(module)?;
+
+    let mut initial_global_values = Vec::new();
+    for global in module.globals() {
+        let value = eval(&mut ctx, global.init())?;
+        initial_global_values.push(value);
+    }
+
+    let moduleinst = ctx.store.instantiate(module, initial_global_values)?;
 
     // @todo push Frame
 

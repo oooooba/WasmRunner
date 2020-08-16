@@ -24,8 +24,12 @@ impl Store {
         }
     }
 
-    pub fn instantiate(&mut self, module: &Module) -> Result<Moduleinst, ExecutionError> {
-        self.allocmodule(module)
+    pub fn instantiate(
+        &mut self,
+        module: &Module,
+        initial_global_values: Vec<Value>,
+    ) -> Result<Moduleinst, ExecutionError> {
+        self.allocmodule(module, initial_global_values)
     }
 
     pub fn funcs(&self) -> &Vec<Funcinst> {
@@ -82,7 +86,23 @@ impl Store {
         Ok(addr)
     }
 
-    fn allocmodule(&mut self, module: &Module) -> Result<Moduleinst, ExecutionError> {
+    fn allocglobal(
+        &mut self,
+        globaltype: &Globaltype,
+        val: Value,
+    ) -> Result<Globaladdr, ExecutionError> {
+        let addr = Globaladdr(Address(self.globals.len()));
+        let mutability = globaltype.mutability().clone();
+        let globalinst = Globalinst::new(val, mutability);
+        self.globals.push(globalinst);
+        Ok(addr)
+    }
+
+    fn allocmodule(
+        &mut self,
+        module: &Module,
+        initial_global_values: Vec<Value>,
+    ) -> Result<Moduleinst, ExecutionError> {
         let mut moduleinst = Moduleinst::new();
 
         let types = module.types().iter().map(|t| t.make_clone()).collect();
@@ -105,11 +125,19 @@ impl Store {
             memaddrs.push(addr);
         }
 
+        let mut globaladdrs = Vec::new();
+        for (i, global) in module.globals().iter().enumerate() {
+            let addr = self.allocglobal(global.typ(), initial_global_values[i])?;
+            globaladdrs.push(addr);
+        }
+
         let funcaddrs_mod = funcaddrs; // @todo concatenate with externals
 
         let tableaddrs_mod = tableaddrs; // @todo concatenate with externals
 
         let memaddrs_mod = memaddrs; // @todo concatenate with externals
+
+        let globaladdrs_mod = globaladdrs; // @todo concatenate with externals
 
         let mut exports = Vec::new();
         for export in module.exports() {
@@ -126,6 +154,7 @@ impl Store {
         moduleinst.update_funcaddrs(funcaddrs_mod);
         moduleinst.update_tableaddrs(tableaddrs_mod);
         moduleinst.update_memaddrs(memaddrs_mod);
+        moduleinst.update_globaladdrs(globaladdrs_mod);
         moduleinst.update_exports(exports);
 
         Ok(moduleinst)
@@ -203,6 +232,10 @@ impl Moduleinst {
 
     fn update_memaddrs(&mut self, memaddrs: Vec<Memaddr>) {
         self.0.borrow_mut().memaddrs = memaddrs;
+    }
+
+    fn update_globaladdrs(&mut self, globaladdrs: Vec<Globaladdr>) {
+        self.0.borrow_mut().globaladdrs = globaladdrs;
     }
 
     fn update_exports(&mut self, exports: Vec<Exportinst>) {
@@ -335,6 +368,12 @@ impl Meminst {
 pub struct Globalinst {
     value: Value,
     mutability: Mutability,
+}
+
+impl Globalinst {
+    pub fn new(value: Value, mutability: Mutability) -> Self {
+        Self { value, mutability }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

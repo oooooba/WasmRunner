@@ -51,6 +51,10 @@ impl Module {
         &self.mems
     }
 
+    pub fn globals(&self) -> &Vec<Global> {
+        &self.globals
+    }
+
     pub fn exports(&self) -> &Vec<Export> {
         &self.exports
     }
@@ -159,6 +163,14 @@ pub struct Global {
 impl Global {
     pub fn new(typ: Globaltype, init: Expr) -> Self {
         Self { typ, init }
+    }
+
+    pub fn typ(&self) -> &Globaltype {
+        &self.typ
+    }
+
+    pub fn init(&self) -> &Expr {
+        &self.init
     }
 }
 
