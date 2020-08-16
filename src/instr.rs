@@ -74,6 +74,7 @@ pub enum InstrKind {
     GetGlobal(Globalidx),
     SetGlobal(Globalidx),
 
+    LoadI32(Memarg),
     StoreI32(Memarg),
     Grow,
 

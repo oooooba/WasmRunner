@@ -403,6 +403,14 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             Ok(Fallthrough)
         }
 
+        LoadI32(memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let v = meminst.read_i32(ea)?;
+            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+        }
         StoreI32(memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
             let c = ctx.stack_mut().pop_i32()?;

@@ -44,6 +44,10 @@ impl Store {
         &mut self.tables
     }
 
+    pub fn mems(&self) -> &Vec<Meminst> {
+        &self.mems
+    }
+
     pub fn mems_mut(&mut self) -> &mut Vec<Meminst> {
         &mut self.mems
     }
@@ -343,6 +347,17 @@ pub struct Meminst {
 impl Meminst {
     pub fn new(data: Vec<u8>, max: Option<u32>) -> Self {
         Self { data, max }
+    }
+
+    pub fn read_i32(&self, index: usize) -> Result<u32, ExecutionError> {
+        let mut buf = [0u8; 32 / 8];
+        if index + buf.len() > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for i in 0..(buf.len()) {
+            buf[i] = self.data[index + i];
+        }
+        Ok(u32::from_le_bytes(buf))
     }
 
     pub fn write_i32(&mut self, index: usize, value: u32) -> Result<(), ExecutionError> {
