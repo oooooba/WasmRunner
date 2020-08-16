@@ -32,6 +32,8 @@ fn run_test(module_file_name: &str) {
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
     let mut current_module = None;
+    let mut current_moduleinst = None;
+    let mut current_context = None;
     for directive in wast_ast.directives {
         use WastDirective::*;
         match directive {
@@ -39,7 +41,10 @@ fn run_test(module_file_name: &str) {
                 let mut reader = &module.encode().unwrap()[..];
                 let mut decoder = Decoder::new(&mut reader);
                 let module = decoder.run().expect("should success");
+                let (moduleinst, ctx) = instantiate(&module).unwrap();
                 current_module = Some(module);
+                current_moduleinst = Some(moduleinst);
+                current_context = Some(ctx);
             }
             AssertReturn { exec, results, .. } => {
                 let (func_name, arguments) = match exec {
@@ -72,12 +77,12 @@ fn run_test(module_file_name: &str) {
                     })
                     .collect::<Vec<Value>>();
 
-                let module = current_module.as_ref().unwrap();
-                let (moduleinst, mut ctx) = instantiate(module).unwrap();
+                let moduleinst = current_moduleinst.as_ref().unwrap();
+                let ctx = current_context.as_mut().unwrap();
                 let funcaddr = moduleinst
                     .find_funcaddr(&Name::new(func_name.to_string()))
                     .unwrap();
-                let res = invoke(&mut ctx, funcaddr, arguments).unwrap();
+                let res = invoke(ctx, funcaddr, arguments).unwrap();
                 println!("{}: result = {:?}", func_name, res);
                 assert_eq!(res, WasmRunnerResult::Values(expected_result));
             }
@@ -105,14 +110,20 @@ fn run_test(module_file_name: &str) {
                     _ => unimplemented!(),
                 };
 
-                let module = current_module.as_ref().unwrap();
-                let (moduleinst, mut ctx) = instantiate(module).unwrap();
+                let moduleinst = current_moduleinst.as_ref().unwrap();
+                let ctx = current_context.as_mut().unwrap();
                 let funcaddr = moduleinst
                     .find_funcaddr(&Name::new(func_name.to_string()))
                     .unwrap();
-                let res = invoke(&mut ctx, funcaddr, arguments).unwrap_err();
+                let res = invoke(ctx, funcaddr, arguments).unwrap_err();
                 println!("{}: trap = {:?}", func_name, res);
                 assert_eq!(res, expected_trap);
+
+                // recreate module instance and context
+                let (new_moduleinst, new_context) =
+                    instantiate(current_module.as_ref().unwrap()).unwrap();
+                current_moduleinst = Some(new_moduleinst);
+                current_context = Some(new_context);
             }
             _ => (),
         }
