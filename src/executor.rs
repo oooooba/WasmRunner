@@ -395,6 +395,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let v = globalinst.value();
             ctx.stack_mut().push_value(v).map(|_| Fallthrough)
         }
+        SetGlobal(idx) => {
+            let v = ctx.stack_mut().pop_value()?;
+            let globaladdr = ctx.current_frame().resolve_globaladdr(*idx)?;
+            let globalinst = &mut ctx.store.globals_mut()[globaladdr.to_usize()];
+            globalinst.update_value(v);
+            Ok(Fallthrough)
+        }
 
         StoreI32(memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;

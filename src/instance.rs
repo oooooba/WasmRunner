@@ -52,6 +52,10 @@ impl Store {
         &self.globals
     }
 
+    pub fn globals_mut(&mut self) -> &mut Vec<Globalinst> {
+        &mut self.globals
+    }
+
     fn allocfunc(
         &mut self,
         func: Func,
@@ -386,6 +390,10 @@ impl Globalinst {
 
     pub fn value(&self) -> Value {
         self.value
+    }
+
+    pub fn update_value(&mut self, value: Value) {
+        self.value = value
     }
 }
 
