@@ -257,6 +257,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x20 => Ok(Instr::new(GetLocal(decode_localidx(reader)?))),
         0x21 => Ok(Instr::new(SetLocal(decode_localidx(reader)?))),
         0x22 => Ok(Instr::new(TeeLocal(decode_localidx(reader)?))),
+        0x23 => Ok(Instr::new(GetGlobal(decode_globalidx(reader)?))),
 
         0x36 => Ok(Instr::new(StoreI32(decode_memarg(reader)?))),
         0x40 => {
@@ -301,6 +302,10 @@ fn decode_funcidx<R: Read>(reader: &mut R) -> Result<Funcidx, DecodeError> {
 
 fn decode_tableidx<R: Read>(reader: &mut R) -> Result<Tableidx, DecodeError> {
     Ok(Tableidx::new(decode_u32(reader)?))
+}
+
+fn decode_globalidx<R: Read>(reader: &mut R) -> Result<Globalidx, DecodeError> {
+    Ok(Globalidx::new(decode_u32(reader)?))
 }
 
 fn decode_localidx<R: Read>(reader: &mut R) -> Result<Localidx, DecodeError> {

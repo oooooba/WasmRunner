@@ -56,6 +56,15 @@ impl Frame {
         }
     }
 
+    pub fn resolve_globaladdr(&self, globalidx: Globalidx) -> Result<Globaladdr, ExecutionError> {
+        match self.0.borrow().module.as_ref() {
+            Some(moduleinst) => moduleinst.resolve_globaladdr(globalidx),
+            None => Err(ExecutionError::ExecutorStateInconsistency(
+                "module instance is not created",
+            )),
+        }
+    }
+
     pub fn resolve_type(&self, typeidx: Typeidx) -> Result<Functype, ExecutionError> {
         match self.0.borrow().module.as_ref() {
             Some(moduleinst) => moduleinst.resolve_type(typeidx),
@@ -379,6 +388,12 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let v = ctx.stack_mut().pop_value()?;
             ctx.stack_mut().push_value(v).map(|_| Fallthrough)?;
             ctx.current_frame_mut().set(*idx, v).map(|_| Fallthrough)
+        }
+        GetGlobal(idx) => {
+            let globaladdr = ctx.current_frame().resolve_globaladdr(*idx)?;
+            let globalinst = &ctx.store.globals()[globaladdr.to_usize()];
+            let v = globalinst.value();
+            ctx.stack_mut().push_value(v).map(|_| Fallthrough)
         }
 
         StoreI32(memarg) => {

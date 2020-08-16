@@ -48,6 +48,10 @@ impl Store {
         &mut self.mems
     }
 
+    pub fn globals(&self) -> &Vec<Globalinst> {
+        &self.globals
+    }
+
     fn allocfunc(
         &mut self,
         func: Func,
@@ -257,6 +261,11 @@ impl Moduleinst {
         Ok(self.0.borrow().memaddrs[memidx.to_usize()].clone())
     }
 
+    pub fn resolve_globaladdr(&self, globalidx: Globalidx) -> Result<Globaladdr, ExecutionError> {
+        // @todo check index
+        Ok(self.0.borrow().globaladdrs[globalidx.to_usize()].clone())
+    }
+
     pub fn resolve_type(&self, typeidx: Typeidx) -> Result<Functype, ExecutionError> {
         // @todo check index
         Ok(self.0.borrow().types[typeidx.to_usize()].make_clone())
@@ -373,6 +382,10 @@ pub struct Globalinst {
 impl Globalinst {
     pub fn new(value: Value, mutability: Mutability) -> Self {
         Self { value, mutability }
+    }
+
+    pub fn value(&self) -> Value {
+        self.value
     }
 }
 
