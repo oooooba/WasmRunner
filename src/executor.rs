@@ -337,6 +337,18 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 BinopKind::Add => c1.wrapping_add(c2),
                 BinopKind::Sub => c1.wrapping_sub(c2),
                 BinopKind::Mul => c1.wrapping_mul(c2),
+                BinopKind::SDiv => {
+                    if c2 == 0 {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                    let c1 = c1 as i32;
+                    let c2 = c2 as i32;
+                    let (result, overflows) = c1.overflowing_div(c2);
+                    if overflows {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    result as u32
+                }
                 BinopKind::UDiv => {
                     if c2 != 0 {
                         c1 / c2
@@ -785,6 +797,7 @@ pub enum ExecutionError {
     },
     ExplicitTrap,
     ZeroDivision,
+    IntegerOverflow,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -815,6 +828,7 @@ impl fmt::Display for ExecutionError {
             ),
             ExplicitTrap => write!(f, "ExplicitTrap:"),
             ZeroDivision => write!(f, "ZeroDivision:"),
+            IntegerOverflow => write!(f, "IntegerOverflow:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }

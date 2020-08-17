@@ -107,6 +107,7 @@ fn run_test(module_file_name: &str) {
                 };
                 let expected_trap = match message {
                     "integer divide by zero" => ExecutionError::ZeroDivision,
+                    "integer overflow" => ExecutionError::IntegerOverflow,
                     _ => unimplemented!(),
                 };
 
