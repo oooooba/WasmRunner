@@ -355,6 +355,15 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                     c1 / c2
                 }
+                BinopKind::SRem => {
+                    if c2 == 0 {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                    let c1 = c1 as i32;
+                    let c2 = c2 as i32;
+                    let (result, _) = c1.overflowing_rem(c2);
+                    result as u32
+                }
                 BinopKind::URem => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);

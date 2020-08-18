@@ -22,6 +22,7 @@ pub enum BinopKind {
     Mul,
     SDiv,
     UDiv,
+    SRem,
     URem,
 }
 
