@@ -350,11 +350,16 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     result as u32
                 }
                 BinopKind::UDiv => {
-                    if c2 != 0 {
-                        c1 / c2
-                    } else {
+                    if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
+                    c1 / c2
+                }
+                BinopKind::URem => {
+                    if c2 == 0 {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                    c1 % c2
                 }
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
