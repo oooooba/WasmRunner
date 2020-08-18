@@ -370,6 +370,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                     c1 % c2
                 }
+                BinopKind::And => c1 & c2,
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }

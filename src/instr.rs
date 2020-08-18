@@ -24,6 +24,7 @@ pub enum BinopKind {
     UDiv,
     SRem,
     URem,
+    And,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
