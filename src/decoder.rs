@@ -285,6 +285,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x6F => Ok(Instr::new(BinopI32(BinopKind::SRem))),
         0x70 => Ok(Instr::new(BinopI32(BinopKind::URem))),
         0x71 => Ok(Instr::new(BinopI32(BinopKind::And))),
+        0x72 => Ok(Instr::new(BinopI32(BinopKind::Or))),
 
         0x7A => Ok(Instr::new(UnopI64(UnopKind::Ctz))),
 
