@@ -374,6 +374,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 BinopKind::Or => c1 | c2,
                 BinopKind::Xor => c1 ^ c2,
                 BinopKind::Shl => c1 << (c2 % 32),
+                BinopKind::UShr => c1 >> (c2 % 32),
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
