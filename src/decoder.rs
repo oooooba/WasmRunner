@@ -290,6 +290,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x74 => Ok(Instr::new(BinopI32(BinopKind::Shl))),
         0x75 => Ok(Instr::new(BinopI32(BinopKind::SShr))),
         0x76 => Ok(Instr::new(BinopI32(BinopKind::UShr))),
+        0x77 => Ok(Instr::new(BinopI32(BinopKind::RotL))),
 
         0x7A => Ok(Instr::new(UnopI64(UnopKind::Ctz))),
 

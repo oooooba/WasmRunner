@@ -376,6 +376,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 BinopKind::Shl => c1 << (c2 % 32),
                 BinopKind::SShr => ((c1 as i32) >> (c2 % 32)) as u32,
                 BinopKind::UShr => c1 >> (c2 % 32),
+                BinopKind::RotL => c1.rotate_left(c2 % 32),
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
