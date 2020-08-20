@@ -28,6 +28,7 @@ pub enum BinopKind {
     Or,
     Xor,
     Shl,
+    SShr,
     UShr,
 }
 
