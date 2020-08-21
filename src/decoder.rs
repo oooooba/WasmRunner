@@ -278,6 +278,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
 
         0x67 => Ok(Instr::new(UnopI32(UnopKind::Clz))),
         0x68 => Ok(Instr::new(UnopI32(UnopKind::Ctz))),
+        0x69 => Ok(Instr::new(UnopI32(UnopKind::Popcnt))),
 
         0x6A => Ok(Instr::new(BinopI32(BinopKind::Add))),
         0x6B => Ok(Instr::new(BinopI32(BinopKind::Sub))),
@@ -297,6 +298,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
 
         0x79 => Ok(Instr::new(UnopI64(UnopKind::Clz))),
         0x7A => Ok(Instr::new(UnopI64(UnopKind::Ctz))),
+        0x7B => Ok(Instr::new(UnopI64(UnopKind::Popcnt))),
 
         _ => panic!("unhandled opcode: {}", b),
     }

@@ -14,6 +14,7 @@ pub enum Blocktype {
 pub enum UnopKind {
     Clz,
     Ctz,
+    Popcnt,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -320,6 +320,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let v = match op {
                 UnopKind::Clz => c.leading_zeros(),
                 UnopKind::Ctz => c.trailing_zeros(),
+                UnopKind::Popcnt => c.count_ones(),
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
@@ -328,6 +329,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let v = match op {
                 UnopKind::Clz => c.leading_zeros() as u64,
                 UnopKind::Ctz => c.trailing_zeros() as u64,
+                UnopKind::Popcnt => c.count_ones() as u64,
             };
             ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
         }
