@@ -318,6 +318,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         UnopI32(op) => {
             let c = ctx.stack_mut().pop_i32()?;
             let v = match op {
+                UnopKind::Clz => c.leading_zeros(),
                 UnopKind::Ctz => c.trailing_zeros(),
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
@@ -325,6 +326,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         UnopI64(op) => {
             let c = ctx.stack_mut().pop_i64()?;
             let v = match op {
+                UnopKind::Clz => c.leading_zeros() as u64,
                 UnopKind::Ctz => c.trailing_zeros() as u64,
             };
             ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
