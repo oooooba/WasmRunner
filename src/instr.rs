@@ -31,6 +31,7 @@ pub enum BinopKind {
     SShr,
     UShr,
     RotL,
+    RotR,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
