@@ -49,6 +49,7 @@ pub enum RelopKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CvtopKind {
     I32Extend8S,
+    I32Extend16S,
 }
 
 #[derive(Debug, PartialEq, Eq)]

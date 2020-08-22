@@ -301,6 +301,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x7B => Ok(Instr::new(UnopI64(IUnopKind::Popcnt))),
 
         0xC0 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend8S))),
+        0xC1 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend16S))),
 
         _ => panic!("unhandled opcode: {}", b),
     }

@@ -410,6 +410,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 CvtopKind::I32Extend8S => {
                     Value::new(ValueKind::I32(ctx.stack_mut().pop_i32()? as i8 as u32))
                 }
+                CvtopKind::I32Extend16S => {
+                    Value::new(ValueKind::I32(ctx.stack_mut().pop_i32()? as i16 as u32))
+                }
             };
             ctx.stack_mut().push_value(v).map(|_| Fallthrough)
         }
