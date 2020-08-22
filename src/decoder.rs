@@ -270,8 +270,8 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
             Ok(Instr::new(Grow))
         }
 
-        0x41 => Ok(Instr::new(ConstI32(decode_u32(reader)?))), // @todo read_i32に直す
-        0x42 => Ok(Instr::new(ConstI64(decode_u64(reader)?))), // @todo read_i64に直す
+        0x41 => Ok(Instr::new(ConstI32(decode_u32(reader)?))),
+        0x42 => Ok(Instr::new(ConstI64(decode_u64(reader)?))),
 
         0x45 => Ok(Instr::new(TestopI32(TestopKind::Eqz))),
         0x46 => Ok(Instr::new(RelopI32(RelopKind::Eq))),
