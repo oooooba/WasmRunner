@@ -401,6 +401,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let v = match op {
                 RelopKind::Eq if c1 == c2 => 1,
                 RelopKind::Ne if c1 != c2 => 1,
+                RelopKind::LtS if (c1 as i32) < (c2 as i32) => 1,
                 _ => 0,
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
