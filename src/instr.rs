@@ -11,14 +11,14 @@ pub enum Blocktype {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UnopKind {
+pub enum IUnopKind {
     Clz,
     Ctz,
     Popcnt,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BinopKind {
+pub enum IBinopKind {
     Add,
     Sub,
     Mul,
@@ -72,9 +72,9 @@ pub enum TerminatorKind {
 pub enum InstrKind {
     ConstI32(u32),
     ConstI64(u64),
-    UnopI32(UnopKind),
-    UnopI64(UnopKind),
-    BinopI32(BinopKind),
+    UnopI32(IUnopKind),
+    UnopI64(IUnopKind),
+    BinopI32(IBinopKind),
     TestopI32(TestopKind),
     RelopI32(RelopKind),
 

@@ -318,18 +318,18 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         UnopI32(op) => {
             let c = ctx.stack_mut().pop_i32()?;
             let v = match op {
-                UnopKind::Clz => c.leading_zeros(),
-                UnopKind::Ctz => c.trailing_zeros(),
-                UnopKind::Popcnt => c.count_ones(),
+                IUnopKind::Clz => c.leading_zeros(),
+                IUnopKind::Ctz => c.trailing_zeros(),
+                IUnopKind::Popcnt => c.count_ones(),
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
         UnopI64(op) => {
             let c = ctx.stack_mut().pop_i64()?;
             let v = match op {
-                UnopKind::Clz => c.leading_zeros() as u64,
-                UnopKind::Ctz => c.trailing_zeros() as u64,
-                UnopKind::Popcnt => c.count_ones() as u64,
+                IUnopKind::Clz => c.leading_zeros() as u64,
+                IUnopKind::Ctz => c.trailing_zeros() as u64,
+                IUnopKind::Popcnt => c.count_ones() as u64,
             };
             ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
         }
@@ -338,10 +338,10 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let c2 = ctx.stack_mut().pop_i32()?;
             let c1 = ctx.stack_mut().pop_i32()?;
             let v = match op {
-                BinopKind::Add => c1.wrapping_add(c2),
-                BinopKind::Sub => c1.wrapping_sub(c2),
-                BinopKind::Mul => c1.wrapping_mul(c2),
-                BinopKind::SDiv => {
+                IBinopKind::Add => c1.wrapping_add(c2),
+                IBinopKind::Sub => c1.wrapping_sub(c2),
+                IBinopKind::Mul => c1.wrapping_mul(c2),
+                IBinopKind::SDiv => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
@@ -353,13 +353,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                     result as u32
                 }
-                BinopKind::UDiv => {
+                IBinopKind::UDiv => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
                     c1 / c2
                 }
-                BinopKind::SRem => {
+                IBinopKind::SRem => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
@@ -368,20 +368,20 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     let (result, _) = c1.overflowing_rem(c2);
                     result as u32
                 }
-                BinopKind::URem => {
+                IBinopKind::URem => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
                     c1 % c2
                 }
-                BinopKind::And => c1 & c2,
-                BinopKind::Or => c1 | c2,
-                BinopKind::Xor => c1 ^ c2,
-                BinopKind::Shl => c1 << (c2 % 32),
-                BinopKind::SShr => ((c1 as i32) >> (c2 % 32)) as u32,
-                BinopKind::UShr => c1 >> (c2 % 32),
-                BinopKind::RotL => c1.rotate_left(c2 % 32),
-                BinopKind::RotR => c1.rotate_right(c2 % 32),
+                IBinopKind::And => c1 & c2,
+                IBinopKind::Or => c1 | c2,
+                IBinopKind::Xor => c1 ^ c2,
+                IBinopKind::Shl => c1 << (c2 % 32),
+                IBinopKind::SShr => ((c1 as i32) >> (c2 % 32)) as u32,
+                IBinopKind::UShr => c1 >> (c2 % 32),
+                IBinopKind::RotL => c1.rotate_left(c2 % 32),
+                IBinopKind::RotR => c1.rotate_right(c2 % 32),
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
