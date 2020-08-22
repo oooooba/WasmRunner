@@ -44,6 +44,7 @@ pub enum TestopKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RelopKind {
     Eq,
+    Ne,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

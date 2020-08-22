@@ -400,6 +400,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let c1 = ctx.stack_mut().pop_i32()?;
             let v = match op {
                 RelopKind::Eq if c1 == c2 => 1,
+                RelopKind::Ne if c1 != c2 => 1,
                 _ => 0,
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
