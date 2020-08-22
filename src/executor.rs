@@ -341,7 +341,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 IBinopKind::Add => c1.wrapping_add(c2),
                 IBinopKind::Sub => c1.wrapping_sub(c2),
                 IBinopKind::Mul => c1.wrapping_mul(c2),
-                IBinopKind::SDiv => {
+                IBinopKind::DivS => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
@@ -353,13 +353,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                     result as u32
                 }
-                IBinopKind::UDiv => {
+                IBinopKind::DivU => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
                     c1 / c2
                 }
-                IBinopKind::SRem => {
+                IBinopKind::RemS => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
@@ -368,7 +368,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     let (result, _) = c1.overflowing_rem(c2);
                     result as u32
                 }
-                IBinopKind::URem => {
+                IBinopKind::RemU => {
                     if c2 == 0 {
                         return Err(ExecutionError::ZeroDivision);
                     }
@@ -378,10 +378,10 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 IBinopKind::Or => c1 | c2,
                 IBinopKind::Xor => c1 ^ c2,
                 IBinopKind::Shl => c1 << (c2 % 32),
-                IBinopKind::SShr => ((c1 as i32) >> (c2 % 32)) as u32,
-                IBinopKind::UShr => c1 >> (c2 % 32),
-                IBinopKind::RotL => c1.rotate_left(c2 % 32),
-                IBinopKind::RotR => c1.rotate_right(c2 % 32),
+                IBinopKind::ShrS => ((c1 as i32) >> (c2 % 32)) as u32,
+                IBinopKind::ShrU => c1 >> (c2 % 32),
+                IBinopKind::Rotl => c1.rotate_left(c2 % 32),
+                IBinopKind::Rotr => c1.rotate_right(c2 % 32),
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
