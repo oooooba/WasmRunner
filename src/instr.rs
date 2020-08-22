@@ -46,6 +46,11 @@ pub enum RelopKind {
     Eq,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CvtopKind {
+    I32Extend8S,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Memarg {
     offset: u32,
@@ -77,6 +82,7 @@ pub enum InstrKind {
     BinopI32(IBinopKind),
     TestopI32(TestopKind),
     RelopI32(RelopKind),
+    Cvtop(CvtopKind),
 
     Drop,
     Select,
