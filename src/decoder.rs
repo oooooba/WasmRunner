@@ -277,6 +277,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x46 => Ok(Instr::new(RelopI32(RelopKind::Eq))),
         0x47 => Ok(Instr::new(RelopI32(RelopKind::Ne))),
         0x48 => Ok(Instr::new(RelopI32(RelopKind::LtS))),
+        0x49 => Ok(Instr::new(RelopI32(RelopKind::LtU))),
 
         0x67 => Ok(Instr::new(UnopI32(IUnopKind::Clz))),
         0x68 => Ok(Instr::new(UnopI32(IUnopKind::Ctz))),
