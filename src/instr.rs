@@ -47,6 +47,7 @@ pub enum RelopKind {
     Ne,
     LtS,
     LtU,
+    GtS,
     LeS,
     LeU,
 }
