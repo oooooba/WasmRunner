@@ -51,6 +51,7 @@ pub enum RelopKind {
     GtU,
     LeS,
     LeU,
+    GeS,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
