@@ -408,6 +408,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 RelopKind::LeS if (c1 as i32) <= (c2 as i32) => 1,
                 RelopKind::LeU if c1 <= c2 => 1,
                 RelopKind::GeS if (c1 as i32) >= (c2 as i32) => 1,
+                RelopKind::GeU if c1 >= c2 => 1,
                 _ => 0,
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
