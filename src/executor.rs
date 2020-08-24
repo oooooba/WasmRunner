@@ -385,6 +385,57 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
+        BinopI64(op) => {
+            let c2 = ctx.stack_mut().pop_i64()?;
+            let c1 = ctx.stack_mut().pop_i64()?;
+            let v = match op {
+                IBinopKind::Add => c1.wrapping_add(c2),
+                IBinopKind::Sub => c1.wrapping_sub(c2),
+                IBinopKind::Mul => c1.wrapping_mul(c2),
+                IBinopKind::DivS => {
+                    if c2 == 0 {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                    let c1 = c1 as i64;
+                    let c2 = c2 as i64;
+                    let (result, overflows) = c1.overflowing_div(c2);
+                    if overflows {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    result as u64
+                }
+                IBinopKind::DivU => {
+                    if c2 == 0 {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                    c1 / c2
+                }
+                IBinopKind::RemS => {
+                    if c2 == 0 {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                    let c1 = c1 as i64;
+                    let c2 = c2 as i64;
+                    let (result, _) = c1.overflowing_rem(c2);
+                    result as u64
+                }
+                IBinopKind::RemU => {
+                    if c2 == 0 {
+                        return Err(ExecutionError::ZeroDivision);
+                    }
+                    c1 % c2
+                }
+                IBinopKind::And => c1 & c2,
+                IBinopKind::Or => c1 | c2,
+                IBinopKind::Xor => c1 ^ c2,
+                IBinopKind::Shl => c1 << (c2 % 64),
+                IBinopKind::ShrS => ((c1 as i64) >> (c2 % 64)) as u64,
+                IBinopKind::ShrU => c1 >> (c2 % 64),
+                IBinopKind::Rotl => c1.rotate_left((c2 % 64) as u32),
+                IBinopKind::Rotr => c1.rotate_right((c2 % 64) as u32),
+            };
+            ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
+        }
 
         TestopI32(op) => {
             let c = ctx.stack_mut().pop_i32()?;

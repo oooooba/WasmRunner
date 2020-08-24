@@ -309,6 +309,22 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x7A => Ok(Instr::new(UnopI64(IUnopKind::Ctz))),
         0x7B => Ok(Instr::new(UnopI64(IUnopKind::Popcnt))),
 
+        0x7C => Ok(Instr::new(BinopI64(IBinopKind::Add))),
+        0x7D => Ok(Instr::new(BinopI64(IBinopKind::Sub))),
+        0x7E => Ok(Instr::new(BinopI64(IBinopKind::Mul))),
+        0x7F => Ok(Instr::new(BinopI64(IBinopKind::DivS))),
+        0x80 => Ok(Instr::new(BinopI64(IBinopKind::DivU))),
+        0x81 => Ok(Instr::new(BinopI64(IBinopKind::RemS))),
+        0x82 => Ok(Instr::new(BinopI64(IBinopKind::RemU))),
+        0x83 => Ok(Instr::new(BinopI64(IBinopKind::And))),
+        0x84 => Ok(Instr::new(BinopI64(IBinopKind::Or))),
+        0x85 => Ok(Instr::new(BinopI64(IBinopKind::Xor))),
+        0x86 => Ok(Instr::new(BinopI64(IBinopKind::Shl))),
+        0x87 => Ok(Instr::new(BinopI64(IBinopKind::ShrS))),
+        0x88 => Ok(Instr::new(BinopI64(IBinopKind::ShrU))),
+        0x89 => Ok(Instr::new(BinopI64(IBinopKind::Rotl))),
+        0x8A => Ok(Instr::new(BinopI64(IBinopKind::Rotr))),
+
         0xC0 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend8S))),
         0xC1 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend16S))),
 
