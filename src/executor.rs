@@ -193,6 +193,10 @@ impl Stack {
         }
     }
 
+    pub fn push_f32(&mut self, n: f32) -> Result<(), ExecutionError> {
+        self.push_value(Value::new(ValueKind::F32(F32Bytes::new(n))))
+    }
+
     pub fn push_value(&mut self, val: Value) -> Result<(), ExecutionError> {
         self.stack.push(StackEntry::Value(val));
         Ok(())
@@ -314,6 +318,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
     match &instr.kind {
         ConstI32(c) => ctx.stack_mut().push_i32(*c).map(|_| Fallthrough),
         ConstI64(c) => ctx.stack_mut().push_i64(*c).map(|_| Fallthrough),
+        ConstF32(c) => ctx.stack_mut().push_f32(c.to_f32()).map(|_| Fallthrough),
 
         UnopI32(op) => {
             let c = ctx.stack_mut().pop_i32()?;

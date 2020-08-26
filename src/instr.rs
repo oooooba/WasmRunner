@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::module::*;
 use crate::types::*;
+use crate::value::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Blocktype {
@@ -90,6 +91,7 @@ pub enum TerminatorKind {
 pub enum InstrKind {
     ConstI32(u32),
     ConstI64(u64),
+    ConstF32(F32Bytes),
     UnopI32(IUnopKind),
     UnopI64(IUnopKind),
     BinopI32(IBinopKind),

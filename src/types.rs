@@ -5,6 +5,7 @@ use std::rc::Rc;
 pub enum Valtype {
     I32,
     I64,
+    F32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

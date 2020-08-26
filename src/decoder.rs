@@ -6,6 +6,7 @@ use std::iter;
 use crate::instr::*;
 use crate::module::*;
 use crate::types::*;
+use crate::value::*;
 
 fn decode_vec<R: Read, E>(
     reader: &mut R,
@@ -76,6 +77,14 @@ fn decode_u64<R: Read>(reader: &mut R) -> Result<u64, DecodeError> {
     Ok(result as u64)
 }
 
+fn decode_f32<R: Read>(reader: &mut R) -> Result<f32, DecodeError> {
+    let mut buf = [0; 4];
+    reader
+        .read_exact(&mut buf)
+        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+    Ok(f32::from_le_bytes(buf))
+}
+
 fn decode_name<R: Read>(reader: &mut R) -> Result<Name, DecodeError> {
     let bytes = decode_vec(reader, decode_byte)?;
     let name = String::from_utf8(bytes).map_err(|e| DecodeError::InvalidName(e.to_string()))?;
@@ -87,7 +96,7 @@ fn decode_valtype<R: Read>(reader: &mut R) -> Result<Valtype, DecodeError> {
     match b {
         0x7F => Ok(Valtype::I32),
         0x7E => Ok(Valtype::I64),
-        0x7D => unimplemented!(),
+        0x7D => Ok(Valtype::F32),
         0x7C => unimplemented!(),
         _ => Err(DecodeError::UnknownValtype(b)),
     }
@@ -272,6 +281,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
 
         0x41 => Ok(Instr::new(ConstI32(decode_u32(reader)?))),
         0x42 => Ok(Instr::new(ConstI64(decode_u64(reader)?))),
+        0x43 => Ok(Instr::new(ConstF32(F32Bytes::new(decode_f32(reader)?)))),
 
         0x45 => Ok(Instr::new(TestopI32(TestopKind::Eqz))),
         0x46 => Ok(Instr::new(RelopI32(RelopKind::Eq))),
