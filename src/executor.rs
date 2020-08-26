@@ -446,6 +446,15 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
 
+        TestopI64(op) => {
+            let c = ctx.stack_mut().pop_i64()?;
+            let v = match op {
+                TestopKind::Eqz if c == 0 => 1,
+                TestopKind::Eqz => 0,
+            };
+            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+        }
+
         RelopI32(op) => {
             let c2 = ctx.stack_mut().pop_i32()?;
             let c1 = ctx.stack_mut().pop_i32()?;

@@ -95,6 +95,7 @@ pub enum InstrKind {
     BinopI32(IBinopKind),
     BinopI64(IBinopKind),
     TestopI32(TestopKind),
+    TestopI64(TestopKind),
     RelopI32(RelopKind),
     Cvtop(CvtopKind),
 
