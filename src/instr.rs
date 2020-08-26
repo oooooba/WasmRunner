@@ -97,6 +97,7 @@ pub enum InstrKind {
     TestopI32(TestopKind),
     TestopI64(TestopKind),
     RelopI32(RelopKind),
+    RelopI64(RelopKind),
     Cvtop(CvtopKind),
 
     Drop,
