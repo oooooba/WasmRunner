@@ -24,6 +24,7 @@ fn main() {
     run_test(&format!("{}/loop.wast", base_dir_path));
     run_test(&format!("{}/br.wast", base_dir_path));
     run_test(&format!("{}/i32.wast", base_dir_path));
+    run_test(&format!("{}/i64.wast", base_dir_path));
 }
 
 fn run_test(module_file_name: &str) {
