@@ -38,6 +38,14 @@ pub enum IBinopKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FBinopKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TestopKind {
     Eqz,
 }
@@ -96,6 +104,7 @@ pub enum InstrKind {
     UnopI64(IUnopKind),
     BinopI32(IBinopKind),
     BinopI64(IBinopKind),
+    BinopF32(FBinopKind),
     TestopI32(TestopKind),
     TestopI64(TestopKind),
     RelopI32(RelopKind),

@@ -197,6 +197,17 @@ impl Stack {
         self.push_value(Value::new(ValueKind::F32(n)))
     }
 
+    pub fn pop_f32(&mut self) -> Result<F32Bytes, ExecutionError> {
+        let v = self.pop_value()?;
+        match v.kind() {
+            ValueKind::F32(n) => Ok(n),
+            _ => Err(ExecutionError::TypeConfusion {
+                expected: Valtype::F32,
+                actual: v.typ(),
+            }),
+        }
+    }
+
     pub fn push_value(&mut self, val: Value) -> Result<(), ExecutionError> {
         self.stack.push(StackEntry::Value(val));
         Ok(())
@@ -440,6 +451,20 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 IBinopKind::Rotr => c1.rotate_right((c2 % 64) as u32),
             };
             ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
+        }
+        BinopF32(op) => {
+            let c2 = ctx.stack_mut().pop_f32()?;
+            let c1 = ctx.stack_mut().pop_f32()?;
+            let c1 = c1.to_f32();
+            let c2 = c2.to_f32();
+            let v = match op {
+                FBinopKind::Add => c1 + c2,
+                FBinopKind::Sub => c1 - c2,
+                FBinopKind::Mul => c1 * c2,
+                FBinopKind::Div => c1 / c2,
+            };
+            let v = F32Bytes::new(v);
+            ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
         }
 
         TestopI32(op) => {
