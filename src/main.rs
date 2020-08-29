@@ -12,11 +12,13 @@ use std::fs;
 use decoder::Decoder;
 use executor::{instantiate, invoke, ExecutionError};
 use module::Name;
-use value::{Value, ValueKind, WasmRunnerResult};
+use value::{F32Bytes, Value, ValueKind, WasmRunnerResult};
 
 // test
 use wast::parser::{self, ParseBuffer};
-use wast::{AssertExpression, Instruction, Wast, WastDirective, WastExecute, WastInvoke};
+use wast::{
+    AssertExpression, Instruction, NanPattern, Wast, WastDirective, WastExecute, WastInvoke,
+};
 
 fn main() {
     let base_dir_path = env::args().skip(1).next().expect("path to wast directory");
@@ -58,6 +60,9 @@ fn run_test(module_file_name: &str) {
                                 let value_kind = match arg.instrs[0] {
                                     I32Const(x) => ValueKind::I32(x as u32),
                                     I64Const(x) => ValueKind::I64(x as u64),
+                                    F32Const(ref x) => ValueKind::F32(F32Bytes::new(
+                                        f32::from_le_bytes(x.bits.to_le_bytes()),
+                                    )),
                                     _ => unimplemented!(),
                                 };
                                 Value::new(value_kind)
@@ -73,6 +78,9 @@ fn run_test(module_file_name: &str) {
                         match res {
                             I32(x) => Value::new(ValueKind::I32(x as u32)),
                             I64(x) => Value::new(ValueKind::I64(x as u64)),
+                            F32(NanPattern::Value(x)) => Value::new(ValueKind::F32(F32Bytes::new(
+                                f32::from_le_bytes(x.bits.to_le_bytes()),
+                            ))),
                             _ => unimplemented!(),
                         }
                     })
