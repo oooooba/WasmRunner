@@ -351,6 +351,8 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x93 => Ok(Instr::new(BinopF32(FBinopKind::Sub))),
         0x94 => Ok(Instr::new(BinopF32(FBinopKind::Mul))),
         0x95 => Ok(Instr::new(BinopF32(FBinopKind::Div))),
+        0x96 => Ok(Instr::new(BinopF32(FBinopKind::Min))),
+        0x97 => Ok(Instr::new(BinopF32(FBinopKind::Max))),
 
         0xC0 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend8S))),
         0xC1 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend16S))),

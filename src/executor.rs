@@ -455,13 +455,29 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         BinopF32(op) => {
             let c2 = ctx.stack_mut().pop_f32()?;
             let c1 = ctx.stack_mut().pop_f32()?;
-            let c1 = c1.to_f32();
-            let c2 = c2.to_f32();
             let v = match op {
-                FBinopKind::Add => c1 + c2,
-                FBinopKind::Sub => c1 - c2,
-                FBinopKind::Mul => c1 * c2,
-                FBinopKind::Div => c1 / c2,
+                FBinopKind::Add => c1.to_f32() + c2.to_f32(),
+                FBinopKind::Sub => c1.to_f32() - c2.to_f32(),
+                FBinopKind::Mul => c1.to_f32() * c2.to_f32(),
+                FBinopKind::Div => c1.to_f32() / c2.to_f32(),
+                FBinopKind::Min => {
+                    if (c1.is_positive_zero() && c2.is_negative_zero())
+                        || (c1.is_negative_zero() && c2.is_positive_zero())
+                    {
+                        -0.0
+                    } else {
+                        c1.to_f32().min(c2.to_f32())
+                    }
+                }
+                FBinopKind::Max => {
+                    if (c1.is_positive_zero() && c2.is_negative_zero())
+                        || (c1.is_negative_zero() && c2.is_positive_zero())
+                    {
+                        0.0
+                    } else {
+                        c1.to_f32().max(c2.to_f32())
+                    }
+                }
             };
             let v = F32Bytes::new(v);
             ctx.stack_mut().push_f32(v).map(|_| Fallthrough)

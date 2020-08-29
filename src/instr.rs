@@ -43,6 +43,8 @@ pub enum FBinopKind {
     Sub,
     Mul,
     Div,
+    Min,
+    Max,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

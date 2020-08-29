@@ -15,6 +15,14 @@ impl F32Bytes {
     pub fn to_f32(self) -> f32 {
         f32::from_le_bytes(self.bytes)
     }
+
+    pub fn is_positive_zero(self) -> bool {
+        self.bytes[0] == 0 && self.bytes[1] == 0 && self.bytes[2] == 0 && self.bytes[3] == 0
+    }
+
+    pub fn is_negative_zero(self) -> bool {
+        self.bytes[0] == 0 && self.bytes[1] == 0 && self.bytes[2] == 0 && self.bytes[3] == 0x80
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
