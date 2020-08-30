@@ -23,6 +23,10 @@ impl F32Bytes {
     pub fn is_negative_zero(self) -> bool {
         self.bytes[0] == 0 && self.bytes[1] == 0 && self.bytes[2] == 0 && self.bytes[3] == 0x80
     }
+
+    pub fn is_nan(self) -> bool {
+        self.to_f32().is_nan()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

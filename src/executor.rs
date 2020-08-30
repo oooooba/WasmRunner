@@ -461,7 +461,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 FBinopKind::Mul => c1.to_f32() * c2.to_f32(),
                 FBinopKind::Div => c1.to_f32() / c2.to_f32(),
                 FBinopKind::Min => {
-                    if (c1.is_positive_zero() && c2.is_negative_zero())
+                    if c1.is_nan() || c2.is_nan() {
+                        f32::NAN
+                    } else if (c1.is_positive_zero() && c2.is_negative_zero())
                         || (c1.is_negative_zero() && c2.is_positive_zero())
                     {
                         -0.0
@@ -470,7 +472,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                 }
                 FBinopKind::Max => {
-                    if (c1.is_positive_zero() && c2.is_negative_zero())
+                    if c1.is_nan() || c2.is_nan() {
+                        f32::NAN
+                    } else if (c1.is_positive_zero() && c2.is_negative_zero())
                         || (c1.is_negative_zero() && c2.is_positive_zero())
                     {
                         0.0
