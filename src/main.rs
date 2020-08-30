@@ -82,6 +82,13 @@ fn run_test(module_file_name: &str) {
                             F32(NanPattern::Value(x)) => Value::new(ValueKind::F32(F32Bytes::new(
                                 f32::from_le_bytes(x.bits.to_le_bytes()),
                             ))),
+                            // @todo fix to handle NaN correctly
+                            F32(NanPattern::CanonicalNan) => {
+                                Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                            }
+                            F32(NanPattern::ArithmeticNan) => {
+                                Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                            }
                             _ => unimplemented!(),
                         }
                     })
@@ -92,9 +99,18 @@ fn run_test(module_file_name: &str) {
                 let funcaddr = moduleinst
                     .find_funcaddr(&Name::new(func_name.to_string()))
                     .unwrap();
-                let res = invoke(ctx, funcaddr, arguments).unwrap();
+                let WasmRunnerResult::Values(res) = invoke(ctx, funcaddr, arguments).unwrap();
+                let res: Vec<Value> = res
+                    .iter()
+                    .map(|v| match v.kind() {
+                        ValueKind::F32(f) if f.is_nan() => {
+                            Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                        }
+                        _ => *v,
+                    })
+                    .collect();
                 println!("{}: result = {:?}", func_name, res);
-                assert_eq!(res, WasmRunnerResult::Values(expected_result));
+                assert_eq!(res, expected_result);
             }
             AssertTrap { exec, message, .. } => {
                 let (func_name, arguments) = match exec {
