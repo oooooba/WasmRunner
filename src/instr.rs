@@ -62,7 +62,7 @@ pub enum TestopKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RelopKind {
+pub enum IRelopKind {
     Eq,
     Ne,
     LtS,
@@ -119,8 +119,8 @@ pub enum InstrKind {
     BinopF32(FBinopKind),
     TestopI32(TestopKind),
     TestopI64(TestopKind),
-    RelopI32(RelopKind),
-    RelopI64(RelopKind),
+    RelopI32(IRelopKind),
+    RelopI64(IRelopKind),
     Cvtop(CvtopKind),
 
     Drop,

@@ -529,16 +529,16 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let c2 = ctx.stack_mut().pop_i32()?;
             let c1 = ctx.stack_mut().pop_i32()?;
             let v = match op {
-                RelopKind::Eq if c1 == c2 => 1,
-                RelopKind::Ne if c1 != c2 => 1,
-                RelopKind::LtS if (c1 as i32) < (c2 as i32) => 1,
-                RelopKind::LtU if c1 < c2 => 1,
-                RelopKind::GtS if (c1 as i32) > (c2 as i32) => 1,
-                RelopKind::GtU if c1 > c2 => 1,
-                RelopKind::LeS if (c1 as i32) <= (c2 as i32) => 1,
-                RelopKind::LeU if c1 <= c2 => 1,
-                RelopKind::GeS if (c1 as i32) >= (c2 as i32) => 1,
-                RelopKind::GeU if c1 >= c2 => 1,
+                IRelopKind::Eq if c1 == c2 => 1,
+                IRelopKind::Ne if c1 != c2 => 1,
+                IRelopKind::LtS if (c1 as i32) < (c2 as i32) => 1,
+                IRelopKind::LtU if c1 < c2 => 1,
+                IRelopKind::GtS if (c1 as i32) > (c2 as i32) => 1,
+                IRelopKind::GtU if c1 > c2 => 1,
+                IRelopKind::LeS if (c1 as i32) <= (c2 as i32) => 1,
+                IRelopKind::LeU if c1 <= c2 => 1,
+                IRelopKind::GeS if (c1 as i32) >= (c2 as i32) => 1,
+                IRelopKind::GeU if c1 >= c2 => 1,
                 _ => 0,
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
@@ -547,16 +547,16 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let c2 = ctx.stack_mut().pop_i64()?;
             let c1 = ctx.stack_mut().pop_i64()?;
             let v = match op {
-                RelopKind::Eq if c1 == c2 => 1,
-                RelopKind::Ne if c1 != c2 => 1,
-                RelopKind::LtS if (c1 as i64) < (c2 as i64) => 1,
-                RelopKind::LtU if c1 < c2 => 1,
-                RelopKind::GtS if (c1 as i64) > (c2 as i64) => 1,
-                RelopKind::GtU if c1 > c2 => 1,
-                RelopKind::LeS if (c1 as i64) <= (c2 as i64) => 1,
-                RelopKind::LeU if c1 <= c2 => 1,
-                RelopKind::GeS if (c1 as i64) >= (c2 as i64) => 1,
-                RelopKind::GeU if c1 >= c2 => 1,
+                IRelopKind::Eq if c1 == c2 => 1,
+                IRelopKind::Ne if c1 != c2 => 1,
+                IRelopKind::LtS if (c1 as i64) < (c2 as i64) => 1,
+                IRelopKind::LtU if c1 < c2 => 1,
+                IRelopKind::GtS if (c1 as i64) > (c2 as i64) => 1,
+                IRelopKind::GtU if c1 > c2 => 1,
+                IRelopKind::LeS if (c1 as i64) <= (c2 as i64) => 1,
+                IRelopKind::LeU if c1 <= c2 => 1,
+                IRelopKind::GeS if (c1 as i64) >= (c2 as i64) => 1,
+                IRelopKind::GeU if c1 >= c2 => 1,
                 _ => 0,
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
