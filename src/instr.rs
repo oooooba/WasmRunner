@@ -38,6 +38,15 @@ pub enum IBinopKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FUnopKind {
+    Ceil,
+    Floor,
+    Trunc,
+    Nearest,
+    Sqrt,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FBinopKind {
     Add,
     Sub,
@@ -104,6 +113,7 @@ pub enum InstrKind {
     ConstF32(F32Bytes),
     UnopI32(IUnopKind),
     UnopI64(IUnopKind),
+    UnopF32(FUnopKind),
     BinopI32(IBinopKind),
     BinopI64(IBinopKind),
     BinopF32(FBinopKind),

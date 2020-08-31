@@ -349,6 +349,27 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             };
             ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
         }
+        UnopF32(op) => {
+            let c = ctx.stack_mut().pop_f32()?;
+            let v = match op {
+                FUnopKind::Ceil => c.to_f32().ceil(),
+                FUnopKind::Floor => c.to_f32().floor(),
+                FUnopKind::Trunc => c.to_f32().trunc(),
+                FUnopKind::Nearest => {
+                    let f = c.to_f32();
+                    if 0.0 < f && f <= 0.5 {
+                        0.0
+                    } else if -0.5 <= f && f < 0.0 {
+                        -0.0
+                    } else {
+                        f.round()
+                    }
+                }
+                FUnopKind::Sqrt => c.to_f32().sqrt(),
+            };
+            let v = F32Bytes::new(v);
+            ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+        }
 
         BinopI32(op) => {
             let c2 = ctx.stack_mut().pop_i32()?;

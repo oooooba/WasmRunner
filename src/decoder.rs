@@ -347,6 +347,12 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x89 => Ok(Instr::new(BinopI64(IBinopKind::Rotl))),
         0x8A => Ok(Instr::new(BinopI64(IBinopKind::Rotr))),
 
+        0x8D => Ok(Instr::new(UnopF32(FUnopKind::Ceil))),
+        0x8E => Ok(Instr::new(UnopF32(FUnopKind::Floor))),
+        0x8F => Ok(Instr::new(UnopF32(FUnopKind::Trunc))),
+        0x90 => Ok(Instr::new(UnopF32(FUnopKind::Nearest))),
+        0x91 => Ok(Instr::new(UnopF32(FUnopKind::Sqrt))),
+
         0x92 => Ok(Instr::new(BinopF32(FBinopKind::Add))),
         0x93 => Ok(Instr::new(BinopF32(FBinopKind::Sub))),
         0x94 => Ok(Instr::new(BinopF32(FBinopKind::Mul))),
