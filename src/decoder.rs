@@ -307,6 +307,13 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x59 => Ok(Instr::new(RelopI64(IRelopKind::GeS))),
         0x5A => Ok(Instr::new(RelopI64(IRelopKind::GeU))),
 
+        0x5B => Ok(Instr::new(RelopF32(FRelopKind::Eq))),
+        0x5C => Ok(Instr::new(RelopF32(FRelopKind::Ne))),
+        0x5D => Ok(Instr::new(RelopF32(FRelopKind::Lt))),
+        0x5E => Ok(Instr::new(RelopF32(FRelopKind::Gt))),
+        0x5F => Ok(Instr::new(RelopF32(FRelopKind::Le))),
+        0x60 => Ok(Instr::new(RelopF32(FRelopKind::Ge))),
+
         0x67 => Ok(Instr::new(UnopI32(IUnopKind::Clz))),
         0x68 => Ok(Instr::new(UnopI32(IUnopKind::Ctz))),
         0x69 => Ok(Instr::new(UnopI32(IUnopKind::Popcnt))),

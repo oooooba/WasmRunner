@@ -76,6 +76,16 @@ pub enum IRelopKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FRelopKind {
+    Eq,
+    Ne,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CvtopKind {
     I32Extend8S,
     I32Extend16S,
@@ -121,6 +131,7 @@ pub enum InstrKind {
     TestopI64(TestopKind),
     RelopI32(IRelopKind),
     RelopI64(IRelopKind),
+    RelopF32(FRelopKind),
     Cvtop(CvtopKind),
 
     Drop,
