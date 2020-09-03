@@ -44,12 +44,12 @@ fn decode_u32_with_size<R: Read>(reader: &mut R) -> Result<(u32, usize), DecodeE
         read_size += 1;
         let b = buf[0] as u64;
         result |= (b & 0x7F) << (i * 7);
-        if result > (u32::MAX as u64) {
-            return Err(DecodeError::OutOfRangeValue(Valtype::I32));
-        }
         if (b & 0x80) == 0 {
             break;
         }
+    }
+    if result > (u32::MAX as u64) {
+        return Err(DecodeError::OutOfRangeValue(Valtype::I32));
     }
     Ok((result as u32, read_size))
 }
@@ -58,23 +58,54 @@ fn decode_u32<R: Read>(reader: &mut R) -> Result<u32, DecodeError> {
     decode_u32_with_size(reader).map(|(v, _)| v)
 }
 
-fn decode_u64<R: Read>(reader: &mut R) -> Result<u64, DecodeError> {
+fn decode_s32_with_size<R: Read>(reader: &mut R) -> Result<(i32, usize), DecodeError> {
+    let mut read_size = 0;
+    let mut result = 0u64;
+    for i in 0..5 {
+        let mut buf = [0; 1];
+        reader
+            .read_exact(&mut buf)
+            .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        read_size += 1;
+        let b = buf[0] as u64;
+        result |= (b & 0x7F) << (i * 7);
+        if (b & 0x80) == 0 {
+            break;
+        }
+    }
+    let shift_width = 64 - 7 * read_size;
+    let result = ((result << shift_width) as i64) >> shift_width;
+    if !((i32::MIN as i64) <= result && result <= (i32::MAX as i64)) {
+        return Err(DecodeError::OutOfRangeValue(Valtype::I32));
+    }
+    Ok((result as i32, read_size))
+}
+
+fn decode_s32<R: Read>(reader: &mut R) -> Result<i32, DecodeError> {
+    decode_s32_with_size(reader).map(|(v, _)| v)
+}
+
+fn decode_s64<R: Read>(reader: &mut R) -> Result<i64, DecodeError> {
+    let mut read_size = 0;
     let mut result = 0u128;
     for i in 0..10 {
         let mut buf = [0; 1];
         reader
             .read_exact(&mut buf)
             .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        read_size += 1;
         let b = buf[0] as u128;
         result |= (b & 0x7F) << (i * 7);
-        if result > (u64::MAX as u128) {
-            return Err(DecodeError::OutOfRangeValue(Valtype::I64));
-        }
         if (b & 0x80) == 0 {
             break;
         }
     }
-    Ok(result as u64)
+    let shift_width = 128 - 7 * read_size;
+    let result = ((result << shift_width) as i128) >> shift_width;
+    if !((i64::MIN as i128) <= result && result <= (i64::MAX as i128)) {
+        return Err(DecodeError::OutOfRangeValue(Valtype::I64));
+    }
+    Ok(result as i64)
 }
 
 fn decode_f32<R: Read>(reader: &mut R) -> Result<f32, DecodeError> {
@@ -279,8 +310,8 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
             Ok(Instr::new(Grow))
         }
 
-        0x41 => Ok(Instr::new(ConstI32(decode_u32(reader)?))),
-        0x42 => Ok(Instr::new(ConstI64(decode_u64(reader)?))),
+        0x41 => Ok(Instr::new(ConstI32(decode_s32(reader)? as u32))),
+        0x42 => Ok(Instr::new(ConstI64(decode_s64(reader)? as u64))),
         0x43 => Ok(Instr::new(ConstF32(F32Bytes::new(decode_f32(reader)?)))),
 
         0x45 => Ok(Instr::new(TestopI32(TestopKind::Eqz))),
