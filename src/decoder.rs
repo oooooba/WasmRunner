@@ -116,6 +116,14 @@ fn decode_f32<R: Read>(reader: &mut R) -> Result<f32, DecodeError> {
     Ok(f32::from_le_bytes(buf))
 }
 
+fn decode_f64<R: Read>(reader: &mut R) -> Result<f64, DecodeError> {
+    let mut buf = [0; 8];
+    reader
+        .read_exact(&mut buf)
+        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+    Ok(f64::from_le_bytes(buf))
+}
+
 fn decode_name<R: Read>(reader: &mut R) -> Result<Name, DecodeError> {
     let bytes = decode_vec(reader, decode_byte)?;
     let name = String::from_utf8(bytes).map_err(|e| DecodeError::InvalidName(e.to_string()))?;
@@ -128,7 +136,7 @@ fn decode_valtype<R: Read>(reader: &mut R) -> Result<Valtype, DecodeError> {
         0x7F => Ok(Valtype::I32),
         0x7E => Ok(Valtype::I64),
         0x7D => Ok(Valtype::F32),
-        0x7C => unimplemented!(),
+        0x7C => Ok(Valtype::F64),
         _ => Err(DecodeError::UnknownValtype(b)),
     }
 }
@@ -313,6 +321,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x41 => Ok(Instr::new(ConstI32(decode_s32(reader)? as u32))),
         0x42 => Ok(Instr::new(ConstI64(decode_s64(reader)? as u64))),
         0x43 => Ok(Instr::new(ConstF32(F32Bytes::new(decode_f32(reader)?)))),
+        0x44 => Ok(Instr::new(ConstF64(F64Bytes::new(decode_f64(reader)?)))),
 
         0x45 => Ok(Instr::new(TestopI32(TestopKind::Eqz))),
         0x46 => Ok(Instr::new(RelopI32(IRelopKind::Eq))),
@@ -397,6 +406,19 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x95 => Ok(Instr::new(BinopF32(FBinopKind::Div))),
         0x96 => Ok(Instr::new(BinopF32(FBinopKind::Min))),
         0x97 => Ok(Instr::new(BinopF32(FBinopKind::Max))),
+
+        0x9B => Ok(Instr::new(UnopF64(FUnopKind::Ceil))),
+        0x9C => Ok(Instr::new(UnopF64(FUnopKind::Floor))),
+        0x9D => Ok(Instr::new(UnopF64(FUnopKind::Trunc))),
+        0x9E => Ok(Instr::new(UnopF64(FUnopKind::Nearest))),
+        0x9F => Ok(Instr::new(UnopF64(FUnopKind::Sqrt))),
+
+        0xA0 => Ok(Instr::new(BinopF64(FBinopKind::Add))),
+        0xA1 => Ok(Instr::new(BinopF64(FBinopKind::Sub))),
+        0xA2 => Ok(Instr::new(BinopF64(FBinopKind::Mul))),
+        0xA3 => Ok(Instr::new(BinopF64(FBinopKind::Div))),
+        0xA4 => Ok(Instr::new(BinopF64(FBinopKind::Min))),
+        0xA5 => Ok(Instr::new(BinopF64(FBinopKind::Max))),
 
         0xC0 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend8S))),
         0xC1 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend16S))),

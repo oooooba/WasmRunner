@@ -30,10 +30,50 @@ impl F32Bytes {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct F64Bytes {
+    bytes: [u8; 8],
+}
+
+impl F64Bytes {
+    pub fn new(n: f64) -> Self {
+        Self {
+            bytes: n.to_le_bytes(),
+        }
+    }
+
+    pub fn to_f64(self) -> f64 {
+        f64::from_le_bytes(self.bytes)
+    }
+
+    pub fn is_positive_zero(self) -> bool {
+        for i in 0..8 {
+            if self.bytes[i] != 0 {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn is_negative_zero(self) -> bool {
+        for i in 0..7 {
+            if self.bytes[i] != 0 {
+                return false;
+            }
+        }
+        self.bytes[7] == 0x80
+    }
+
+    pub fn is_nan(self) -> bool {
+        self.to_f64().is_nan()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
     I32(u32),
     I64(u64),
     F32(F32Bytes),
+    F64(F64Bytes),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +95,7 @@ impl Value {
             ValueKind::I32(_) => Valtype::I32,
             ValueKind::I64(_) => Valtype::I64,
             ValueKind::F32(_) => Valtype::F32,
+            ValueKind::F64(_) => Valtype::F64,
         }
     }
 }

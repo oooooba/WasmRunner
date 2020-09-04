@@ -208,6 +208,21 @@ impl Stack {
         }
     }
 
+    pub fn push_f64(&mut self, n: F64Bytes) -> Result<(), ExecutionError> {
+        self.push_value(Value::new(ValueKind::F64(n)))
+    }
+
+    pub fn pop_f64(&mut self) -> Result<F64Bytes, ExecutionError> {
+        let v = self.pop_value()?;
+        match v.kind() {
+            ValueKind::F64(n) => Ok(n),
+            _ => Err(ExecutionError::TypeConfusion {
+                expected: Valtype::F64,
+                actual: v.typ(),
+            }),
+        }
+    }
+
     pub fn push_value(&mut self, val: Value) -> Result<(), ExecutionError> {
         self.stack.push(StackEntry::Value(val));
         Ok(())
@@ -330,6 +345,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         ConstI32(c) => ctx.stack_mut().push_i32(*c).map(|_| Fallthrough),
         ConstI64(c) => ctx.stack_mut().push_i64(*c).map(|_| Fallthrough),
         ConstF32(c) => ctx.stack_mut().push_f32(*c).map(|_| Fallthrough),
+        ConstF64(c) => ctx.stack_mut().push_f64(*c).map(|_| Fallthrough),
 
         UnopI32(op) => {
             let c = ctx.stack_mut().pop_i32()?;
@@ -369,6 +385,27 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             };
             let v = F32Bytes::new(v);
             ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+        }
+        UnopF64(op) => {
+            let c = ctx.stack_mut().pop_f64()?;
+            let v = match op {
+                FUnopKind::Ceil => c.to_f64().ceil(),
+                FUnopKind::Floor => c.to_f64().floor(),
+                FUnopKind::Trunc => c.to_f64().trunc(),
+                FUnopKind::Nearest => {
+                    let f = c.to_f64();
+                    if 0.0 < f && f <= 0.5 {
+                        0.0
+                    } else if -0.5 <= f && f < 0.0 {
+                        -0.0
+                    } else {
+                        f.round()
+                    }
+                }
+                FUnopKind::Sqrt => c.to_f64().sqrt(),
+            };
+            let v = F64Bytes::new(v);
+            ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
         }
 
         BinopI32(op) => {
@@ -506,6 +543,40 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             };
             let v = F32Bytes::new(v);
             ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+        }
+        BinopF64(op) => {
+            let c2 = ctx.stack_mut().pop_f64()?;
+            let c1 = ctx.stack_mut().pop_f64()?;
+            let v = match op {
+                FBinopKind::Add => c1.to_f64() + c2.to_f64(),
+                FBinopKind::Sub => c1.to_f64() - c2.to_f64(),
+                FBinopKind::Mul => c1.to_f64() * c2.to_f64(),
+                FBinopKind::Div => c1.to_f64() / c2.to_f64(),
+                FBinopKind::Min => {
+                    if c1.is_nan() || c2.is_nan() {
+                        f64::NAN
+                    } else if (c1.is_positive_zero() && c2.is_negative_zero())
+                        || (c1.is_negative_zero() && c2.is_positive_zero())
+                    {
+                        -0.0
+                    } else {
+                        c1.to_f64().min(c2.to_f64())
+                    }
+                }
+                FBinopKind::Max => {
+                    if c1.is_nan() || c2.is_nan() {
+                        f64::NAN
+                    } else if (c1.is_positive_zero() && c2.is_negative_zero())
+                        || (c1.is_negative_zero() && c2.is_positive_zero())
+                    {
+                        0.0
+                    } else {
+                        c1.to_f64().max(c2.to_f64())
+                    }
+                }
+            };
+            let v = F64Bytes::new(v);
+            ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
         }
 
         TestopI32(op) => {

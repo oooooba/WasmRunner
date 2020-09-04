@@ -6,6 +6,7 @@ pub enum Valtype {
     I32,
     I64,
     F32,
+    F64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
