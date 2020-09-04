@@ -28,6 +28,7 @@ fn main() {
     run_test(&format!("{}/i32.wast", base_dir_path));
     run_test(&format!("{}/i64.wast", base_dir_path));
     run_test(&format!("{}/f32.wast", base_dir_path));
+    run_test(&format!("{}/f64.wast", base_dir_path));
     run_test(&format!("{}/f32_cmp.wast", base_dir_path));
     run_test(&format!("{}/int_literals.wast", base_dir_path));
 }
