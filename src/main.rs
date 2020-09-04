@@ -12,7 +12,7 @@ use std::fs;
 use decoder::Decoder;
 use executor::{instantiate, invoke, ExecutionError};
 use module::Name;
-use value::{F32Bytes, Value, ValueKind, WasmRunnerResult};
+use value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
 // test
 use wast::parser::{self, ParseBuffer};
@@ -66,6 +66,9 @@ fn run_test(module_file_name: &str) {
                                     F32Const(ref x) => ValueKind::F32(F32Bytes::new(
                                         f32::from_le_bytes(x.bits.to_le_bytes()),
                                     )),
+                                    F64Const(ref x) => ValueKind::F64(F64Bytes::new(
+                                        f64::from_le_bytes(x.bits.to_le_bytes()),
+                                    )),
                                     _ => unimplemented!(),
                                 };
                                 Value::new(value_kind)
@@ -91,6 +94,16 @@ fn run_test(module_file_name: &str) {
                             F32(NanPattern::ArithmeticNan) => {
                                 Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
                             }
+                            F64(NanPattern::Value(x)) => Value::new(ValueKind::F64(F64Bytes::new(
+                                f64::from_le_bytes(x.bits.to_le_bytes()),
+                            ))),
+                            // @todo fix to handle NaN correctly
+                            F64(NanPattern::CanonicalNan) => {
+                                Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
+                            }
+                            F64(NanPattern::ArithmeticNan) => {
+                                Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
+                            }
                             _ => unimplemented!(),
                         }
                     })
@@ -107,6 +120,9 @@ fn run_test(module_file_name: &str) {
                     .map(|v| match v.kind() {
                         ValueKind::F32(f) if f.is_nan() => {
                             Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                        }
+                        ValueKind::F64(f) if f.is_nan() => {
+                            Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
                         }
                         _ => *v,
                     })
