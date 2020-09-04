@@ -674,13 +674,10 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         Nop => Ok(Fallthrough),
         Unreachable => Err(ExecutionError::ExplicitTrap),
         Block(blocktype, instr_seq) => {
-            let arity = ctx
-                .current_frame()
-                .expand_blocktype(blocktype)?
-                .return_type()
-                .len();
-            // @todo pop values
-            let ctrl = execute_instr_seq(ctx, instr_seq, Label::new(arity))?;
+            let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+            let num_params = blocktype.param_type().len();
+            let num_returns = blocktype.return_type().len();
+            let ctrl = execute_instr_seq(ctx, instr_seq, num_params, Label::new(num_returns))?;
             match ctrl {
                 Branch(0) => Ok(Fallthrough),
                 Branch(count) => Ok(Branch(count - 1)),
@@ -688,14 +685,10 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             }
         }
         Loop(blocktype, instr_seq) => {
-            let arity = ctx
-                .current_frame()
-                .expand_blocktype(blocktype)?
-                .return_type()
-                .len();
-            // @todo pop values
+            let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+            let num_params = blocktype.param_type().len();
             let ctrl = loop {
-                let ctrl = execute_instr_seq(ctx, instr_seq, Label::new(arity))?;
+                let ctrl = execute_instr_seq(ctx, instr_seq, num_params, Label::new(num_params))?;
                 match ctrl {
                     Branch(0) => (),
                     Branch(count) => break Branch(count - 1),
@@ -705,19 +698,17 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             Ok(ctrl)
         }
         If(blocktype, then_instr_seq, else_instr_seq) => {
-            let arity = ctx
-                .current_frame()
-                .expand_blocktype(blocktype)?
-                .return_type()
-                .len();
+            let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+            let num_params = blocktype.param_type().len();
+            let num_returns = blocktype.return_type().len();
             let cond = ctx.stack_mut().pop_i32()?;
-            // @todo pop values
-            let label = Label::new(arity);
-            let ctrl = if cond != 0 {
-                execute_instr_seq(ctx, then_instr_seq, label)
+            let instr_seq = if cond != 0 {
+                then_instr_seq
             } else {
-                execute_instr_seq(ctx, else_instr_seq, label)
-            }?;
+                else_instr_seq
+            };
+            let label = Label::new(num_returns);
+            let ctrl = execute_instr_seq(ctx, instr_seq, num_params, label)?;
             let ctrl = match ctrl {
                 Branch(0) => Fallthrough,
                 Branch(count) => Branch(count - 1),
@@ -874,7 +865,7 @@ pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionEr
 
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     let label = Label::new(1);
-    let ctrl = execute_instr_seq(ctx, expr.instr_seq(), label)?;
+    let ctrl = execute_instr_seq(ctx, expr.instr_seq(), 0, label)?;
     match ctrl {
         Control::Branch(_) => unreachable!(),
         Control::Fallthrough => (),
@@ -886,11 +877,19 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
 fn execute_instr_seq(
     ctx: &mut Context,
     instr_seq: &InstrSeq,
+    num_params: usize,
     label: Label,
 ) -> Result<Control, ExecutionError> {
     // enter instr_seq with label
-    let arity = label.arity();
+    let mut args = Vec::new();
+    for _ in 0..num_params {
+        let arg = ctx.stack_mut().pop_value()?;
+        args.push(arg);
+    }
     ctx.stack_mut().push_label(label)?;
+    for arg in args {
+        ctx.stack_mut().push_value(arg)?;
+    }
 
     for instr in instr_seq.instr_seq().iter() {
         let ctrl = execute(instr, ctx)?;
@@ -902,14 +901,21 @@ fn execute_instr_seq(
     }
 
     // exit instr_seq with label
-    let mut tmp = Vec::new();
-    for _ in 0..arity {
-        let value = ctx.stack_mut().pop_value()?;
-        tmp.push(value);
+    let mut results = Vec::new();
+    loop {
+        let entry = ctx.stack().peek_stack_entry()?;
+        use StackEntry::*;
+        match entry {
+            Value(_) => (),
+            Label(_) => break,
+            Frame(_) => unreachable!(), // @todo raise ExecutionError
+        }
+        let result = ctx.stack_mut().pop_value()?;
+        results.push(result);
     }
     ctx.stack_mut().pop_label()?;
-    while let Some(value) = tmp.pop() {
-        ctx.stack_mut().push_value(value)?;
+    while let Some(result) = results.pop() {
+        ctx.stack_mut().push_value(result)?;
     }
     Ok(Control::Fallthrough)
 }
@@ -949,7 +955,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<Control, Executi
     ctx.update_frame(frame);
 
     let label = Label::new(return_size);
-    let ctrl = execute_instr_seq(ctx, body.instr_seq(), label)?;
+    let ctrl = execute_instr_seq(ctx, body.instr_seq(), 0, label)?;
     let ctrl = match ctrl {
         Control::Branch(_) => unreachable!(),
         Control::Fallthrough => Control::Fallthrough,
