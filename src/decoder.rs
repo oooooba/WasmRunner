@@ -229,7 +229,7 @@ fn decode_blocktype<R: Read>(reader: &mut R) -> Result<Blocktype, DecodeError> {
         0x7F => Blocktype::Valtype(Valtype::I32),
         0x7E => Blocktype::Valtype(Valtype::I64),
         0x7D => Blocktype::Valtype(Valtype::F32),
-        0x7C => unimplemented!(),
+        0x7C => Blocktype::Valtype(Valtype::F64),
         _ => Blocktype::S33(Typeidx::new(b.into())),
     };
     Ok(blocktype)
