@@ -682,6 +682,34 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             };
             ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
+        RelopF64(op) => {
+            let c2 = ctx.stack_mut().pop_f64()?;
+            let c1 = ctx.stack_mut().pop_f64()?;
+            let v = match op {
+                FRelopKind::Eq if c1.is_nan() || c2.is_nan() => 0,
+                FRelopKind::Eq if c1.is_positive_zero() && c2.is_negative_zero() => 1,
+                FRelopKind::Eq if c1.is_negative_zero() && c2.is_positive_zero() => 1,
+                FRelopKind::Eq if c1 == c2 => 1,
+                FRelopKind::Ne if c1.is_nan() || c2.is_nan() => 1,
+                FRelopKind::Ne if c1.is_positive_zero() && c2.is_negative_zero() => 0,
+                FRelopKind::Ne if c1.is_negative_zero() && c2.is_positive_zero() => 0,
+                FRelopKind::Ne if c1 != c2 => 1,
+                FRelopKind::Lt if c1.is_nan() || c2.is_nan() => 0,
+                FRelopKind::Lt if c1.to_f64() < c2.to_f64() => 1,
+                FRelopKind::Gt if c1.is_nan() || c2.is_nan() => 0,
+                FRelopKind::Gt if c1.to_f64() > c2.to_f64() => 1,
+                FRelopKind::Le if c1.is_nan() || c2.is_nan() => 0,
+                FRelopKind::Le if c1.is_positive_zero() && c2.is_negative_zero() => 1,
+                FRelopKind::Le if c1.is_negative_zero() && c2.is_positive_zero() => 1,
+                FRelopKind::Le if c1.to_f64() <= c2.to_f64() => 1,
+                FRelopKind::Ge if c1.is_nan() || c2.is_nan() => 0,
+                FRelopKind::Ge if c1.is_positive_zero() && c2.is_negative_zero() => 1,
+                FRelopKind::Ge if c1.is_negative_zero() && c2.is_positive_zero() => 1,
+                FRelopKind::Ge if c1.to_f64() >= c2.to_f64() => 1,
+                _ => 0,
+            };
+            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+        }
 
         Cvtop(op) => {
             let v = match op {

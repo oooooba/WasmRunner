@@ -354,10 +354,16 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x5F => Ok(Instr::new(RelopF32(FRelopKind::Le))),
         0x60 => Ok(Instr::new(RelopF32(FRelopKind::Ge))),
 
+        0x61 => Ok(Instr::new(RelopF64(FRelopKind::Eq))),
+        0x62 => Ok(Instr::new(RelopF64(FRelopKind::Ne))),
+        0x63 => Ok(Instr::new(RelopF64(FRelopKind::Lt))),
+        0x64 => Ok(Instr::new(RelopF64(FRelopKind::Gt))),
+        0x65 => Ok(Instr::new(RelopF64(FRelopKind::Le))),
+        0x66 => Ok(Instr::new(RelopF64(FRelopKind::Ge))),
+
         0x67 => Ok(Instr::new(UnopI32(IUnopKind::Clz))),
         0x68 => Ok(Instr::new(UnopI32(IUnopKind::Ctz))),
         0x69 => Ok(Instr::new(UnopI32(IUnopKind::Popcnt))),
-
         0x6A => Ok(Instr::new(BinopI32(IBinopKind::Add))),
         0x6B => Ok(Instr::new(BinopI32(IBinopKind::Sub))),
         0x6C => Ok(Instr::new(BinopI32(IBinopKind::Mul))),
@@ -377,7 +383,6 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x79 => Ok(Instr::new(UnopI64(IUnopKind::Clz))),
         0x7A => Ok(Instr::new(UnopI64(IUnopKind::Ctz))),
         0x7B => Ok(Instr::new(UnopI64(IUnopKind::Popcnt))),
-
         0x7C => Ok(Instr::new(BinopI64(IBinopKind::Add))),
         0x7D => Ok(Instr::new(BinopI64(IBinopKind::Sub))),
         0x7E => Ok(Instr::new(BinopI64(IBinopKind::Mul))),

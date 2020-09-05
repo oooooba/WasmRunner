@@ -138,6 +138,7 @@ pub enum InstrKind {
     RelopI32(IRelopKind),
     RelopI64(IRelopKind),
     RelopF32(FRelopKind),
+    RelopF64(FRelopKind),
     Cvtop(CvtopKind),
 
     Drop,
