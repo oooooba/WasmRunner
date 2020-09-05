@@ -1007,17 +1007,27 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<Control, Executi
         ));
     }
 
-    let mut locals = Vec::with_capacity(param_size + locals_size);
+    let mut locals: Vec<Value> = func
+        .locals()
+        .iter()
+        .rev()
+        .map(|t| {
+            let zero_val_kind = match t {
+                Valtype::I32 => ValueKind::I32(0),
+                Valtype::I64 => ValueKind::I64(0),
+                Valtype::F32 => ValueKind::F32(F32Bytes::new(0.0)),
+                Valtype::F64 => ValueKind::F64(F64Bytes::new(0.0)),
+            };
+            Value::new(zero_val_kind)
+        })
+        .collect();
+
     for _ in 0..param_size {
         let val = ctx.stack_mut().pop_value()?;
         locals.push(val);
     }
-    locals.reverse();
 
-    for _ in 0..locals_size {
-        let zero_val = Value::new(ValueKind::I32(0)); // @todo
-        locals.push(zero_val);
-    }
+    locals.reverse();
 
     let frame = Frame::new(locals, return_size, Some(module));
     ctx.stack_mut().push_frame(frame.make_clone())?;
