@@ -78,37 +78,43 @@ fn run_test(module_file_name: &str) {
                     ),
                     _ => unimplemented!(),
                 };
-                let expected_result = results
+                let (expected_result, should_replace_nan): (Vec<Value>, Vec<bool>) = results
                     .into_iter()
                     .map(|res| {
                         use AssertExpression::*;
                         match res {
-                            I32(x) => Value::new(ValueKind::I32(x as u32)),
-                            I64(x) => Value::new(ValueKind::I64(x as u64)),
-                            F32(NanPattern::Value(x)) => Value::new(ValueKind::F32(F32Bytes::new(
-                                f32::from_le_bytes(x.bits.to_le_bytes()),
-                            ))),
+                            I32(x) => (Value::new(ValueKind::I32(x as u32)), false),
+                            I64(x) => (Value::new(ValueKind::I64(x as u64)), false),
+                            F32(NanPattern::Value(x)) => (
+                                Value::new(ValueKind::F32(F32Bytes::new(f32::from_le_bytes(
+                                    x.bits.to_le_bytes(),
+                                )))),
+                                false,
+                            ),
                             // @todo fix to handle NaN correctly
                             F32(NanPattern::CanonicalNan) => {
-                                Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                                (Value::new(ValueKind::F32(F32Bytes::new(f32::NAN))), true)
                             }
                             F32(NanPattern::ArithmeticNan) => {
-                                Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                                (Value::new(ValueKind::F32(F32Bytes::new(f32::NAN))), true)
                             }
-                            F64(NanPattern::Value(x)) => Value::new(ValueKind::F64(F64Bytes::new(
-                                f64::from_le_bytes(x.bits.to_le_bytes()),
-                            ))),
+                            F64(NanPattern::Value(x)) => (
+                                Value::new(ValueKind::F64(F64Bytes::new(f64::from_le_bytes(
+                                    x.bits.to_le_bytes(),
+                                )))),
+                                false,
+                            ),
                             // @todo fix to handle NaN correctly
                             F64(NanPattern::CanonicalNan) => {
-                                Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
+                                (Value::new(ValueKind::F64(F64Bytes::new(f64::NAN))), true)
                             }
                             F64(NanPattern::ArithmeticNan) => {
-                                Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
+                                (Value::new(ValueKind::F64(F64Bytes::new(f64::NAN))), true)
                             }
                             _ => unimplemented!(),
                         }
                     })
-                    .collect::<Vec<Value>>();
+                    .unzip();
 
                 let moduleinst = current_moduleinst.as_ref().unwrap();
                 let ctx = current_context.as_mut().unwrap();
@@ -116,18 +122,21 @@ fn run_test(module_file_name: &str) {
                     .find_funcaddr(&Name::new(func_name.to_string()))
                     .unwrap();
                 let WasmRunnerResult::Values(res) = invoke(ctx, funcaddr, arguments).unwrap();
-                let res: Vec<Value> = res
-                    .iter()
-                    .map(|v| match v.kind() {
-                        ValueKind::F32(f) if f.is_nan() => {
-                            Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
-                        }
-                        ValueKind::F64(f) if f.is_nan() => {
-                            Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
-                        }
-                        _ => *v,
-                    })
-                    .collect();
+                let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
+                    res.iter()
+                        .map(|v| match v.kind() {
+                            ValueKind::F32(f) if f.is_nan() => {
+                                Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                            }
+                            ValueKind::F64(f) if f.is_nan() => {
+                                Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
+                            }
+                            _ => *v,
+                        })
+                        .collect()
+                } else {
+                    res
+                };
                 println!("{}: result = {:?}", func_name, res);
                 assert_eq!(res, expected_result);
             }
