@@ -768,21 +768,31 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             Ok(Fallthrough)
         }
 
-        LoadI32(memarg) => {
+        Load(valtype, memop, memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
             let i = ctx.stack_mut().pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
             let meminst = &ctx.store.mems()[memaddr.to_usize()];
-            let v = meminst.read_i32(ea)?;
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            match (valtype, memop) {
+                (Valtype::I32, None) => {
+                    let v = meminst.read_i32(ea)?;
+                    ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+                }
+                _ => unimplemented!(),
+            }
         }
-        StoreI32(memarg) => {
+        Store(valtype, memop, memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let c = ctx.stack_mut().pop_i32()?;
+            let v = ctx.stack_mut().pop_value()?;
             let i = ctx.stack_mut().pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
             let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
-            meminst.write_i32(ea, c).map(|_| Fallthrough)
+            match (valtype, v.kind(), memop) {
+                (Valtype::I32, ValueKind::I32(c), None) => {
+                    meminst.write_i32(ea, c).map(|_| Fallthrough)
+                }
+                _ => unimplemented!(),
+            }
         }
         Grow => {
             let n = ctx.stack_mut().pop_i32()? as usize;

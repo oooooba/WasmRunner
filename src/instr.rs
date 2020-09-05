@@ -97,6 +97,9 @@ pub enum CvtopKind {
     I64Extend32S,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MemopKind {}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Memarg {
     offset: u32,
@@ -150,8 +153,8 @@ pub enum InstrKind {
     GetGlobal(Globalidx),
     SetGlobal(Globalidx),
 
-    LoadI32(Memarg),
-    StoreI32(Memarg),
+    Load(Valtype, Option<MemopKind>, Memarg),
+    Store(Valtype, Option<MemopKind>, Memarg),
     Grow,
 
     Nop,
