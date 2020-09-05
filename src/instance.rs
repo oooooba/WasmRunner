@@ -349,26 +349,33 @@ impl Meminst {
         Self { data, max }
     }
 
-    pub fn read_i32(&self, index: usize) -> Result<u32, ExecutionError> {
-        let mut buf = [0u8; 32 / 8];
-        if index + buf.len() > self.data.len() {
+    fn read4(&self, index: usize) -> Result<[u8; 4], ExecutionError> {
+        let mut bytes = [0u8; 32 / 8];
+        if index + bytes.len() > self.data.len() {
             unimplemented!() // @todo raise Error
         }
-        for i in 0..(buf.len()) {
-            buf[i] = self.data[index + i];
+        for i in 0..(bytes.len()) {
+            bytes[i] = self.data[index + i];
         }
-        Ok(u32::from_le_bytes(buf))
+        Ok(bytes)
     }
 
-    pub fn write_i32(&mut self, index: usize, value: u32) -> Result<(), ExecutionError> {
-        let bs = value.to_le_bytes();
-        if index + bs.len() > self.data.len() {
+    fn write4(&mut self, index: usize, bytes: [u8; 4]) -> Result<(), ExecutionError> {
+        if index + bytes.len() > self.data.len() {
             unimplemented!() // @todo raise Error
         }
-        for (i, &b) in bs.iter().enumerate() {
+        for (i, &b) in bytes.iter().enumerate() {
             self.data[index + i] = b;
         }
         Ok(())
+    }
+
+    pub fn read_i32(&self, index: usize) -> Result<u32, ExecutionError> {
+        Ok(u32::from_le_bytes(self.read4(index)?))
+    }
+
+    pub fn write_i32(&mut self, index: usize, value: u32) -> Result<(), ExecutionError> {
+        self.write4(index, value.to_le_bytes())
     }
 
     pub fn grow(&mut self, page_size: usize) -> Result<Option<u32>, ExecutionError> {
