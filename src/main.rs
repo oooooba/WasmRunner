@@ -23,13 +23,13 @@ use wast::{
 fn main() {
     let base_dir_path = env::args().skip(1).next().expect("path to wast directory");
     run_test(&format!("{}/block.wast", base_dir_path));
-    run_test(&format!("{}/loop.wast", base_dir_path));
     run_test(&format!("{}/br.wast", base_dir_path));
+    run_test(&format!("{}/loop.wast", base_dir_path));
+    run_test(&format!("{}/f32.wast", base_dir_path));
+    run_test(&format!("{}/f32_cmp.wast", base_dir_path));
+    run_test(&format!("{}/f64.wast", base_dir_path));
     run_test(&format!("{}/i32.wast", base_dir_path));
     run_test(&format!("{}/i64.wast", base_dir_path));
-    run_test(&format!("{}/f32.wast", base_dir_path));
-    run_test(&format!("{}/f64.wast", base_dir_path));
-    run_test(&format!("{}/f32_cmp.wast", base_dir_path));
     run_test(&format!("{}/int_literals.wast", base_dir_path));
 }
 
