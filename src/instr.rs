@@ -39,6 +39,8 @@ pub enum IBinopKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FUnopKind {
+    Abs,
+    Neg,
     Ceil,
     Floor,
     Trunc,
@@ -54,6 +56,7 @@ pub enum FBinopKind {
     Div,
     Min,
     Max,
+    Copysign,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

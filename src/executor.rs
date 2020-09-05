@@ -368,6 +368,8 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         UnopF32(op) => {
             let c = ctx.stack_mut().pop_f32()?;
             let v = match op {
+                FUnopKind::Abs => c.to_absolute_value().to_f32(),
+                FUnopKind::Neg => c.to_negated_value().to_f32(),
                 FUnopKind::Ceil => c.to_f32().ceil(),
                 FUnopKind::Floor => c.to_f32().floor(),
                 FUnopKind::Trunc => c.to_f32().trunc(),
@@ -389,6 +391,8 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         UnopF64(op) => {
             let c = ctx.stack_mut().pop_f64()?;
             let v = match op {
+                FUnopKind::Abs => c.to_absolute_value().to_f64(),
+                FUnopKind::Neg => c.to_negated_value().to_f64(),
                 FUnopKind::Ceil => c.to_f64().ceil(),
                 FUnopKind::Floor => c.to_f64().floor(),
                 FUnopKind::Trunc => c.to_f64().trunc(),
@@ -540,6 +544,15 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                         c1.to_f32().max(c2.to_f32())
                     }
                 }
+                FBinopKind::Copysign => {
+                    if (c1.is_positive() && c2.is_positive())
+                        || (c1.is_negative() && c2.is_negative())
+                    {
+                        c1.to_f32()
+                    } else {
+                        c1.to_negated_value().to_f32()
+                    }
+                }
             };
             let v = F32Bytes::new(v);
             ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
@@ -572,6 +585,15 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                         0.0
                     } else {
                         c1.to_f64().max(c2.to_f64())
+                    }
+                }
+                FBinopKind::Copysign => {
+                    if (c1.is_positive() && c2.is_positive())
+                        || (c1.is_negative() && c2.is_negative())
+                    {
+                        c1.to_f64()
+                    } else {
+                        c1.to_negated_value().to_f64()
                     }
                 }
             };
