@@ -238,7 +238,7 @@ fn decode_blocktype<R: Read>(reader: &mut R) -> Result<Blocktype, DecodeError> {
 fn decode_memarg<R: Read>(reader: &mut R) -> Result<Memarg, DecodeError> {
     let align = decode_u32(reader)?;
     let offset = decode_u32(reader)?;
-    Ok(Memarg::new(align, offset))
+    Ok(Memarg::new(offset, align))
 }
 
 fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
