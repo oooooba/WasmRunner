@@ -370,12 +370,57 @@ impl Meminst {
         Ok(())
     }
 
+    fn read8(&self, index: usize) -> Result<[u8; 8], ExecutionError> {
+        let mut bytes = [0u8; 64 / 8];
+        if index + bytes.len() > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for i in 0..(bytes.len()) {
+            bytes[i] = self.data[index + i];
+        }
+        Ok(bytes)
+    }
+
+    fn write8(&mut self, index: usize, bytes: [u8; 8]) -> Result<(), ExecutionError> {
+        if index + bytes.len() > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for (i, &b) in bytes.iter().enumerate() {
+            self.data[index + i] = b;
+        }
+        Ok(())
+    }
+
     pub fn read_i32(&self, index: usize) -> Result<u32, ExecutionError> {
         Ok(u32::from_le_bytes(self.read4(index)?))
     }
 
     pub fn write_i32(&mut self, index: usize, value: u32) -> Result<(), ExecutionError> {
         self.write4(index, value.to_le_bytes())
+    }
+
+    pub fn read_i64(&self, index: usize) -> Result<u64, ExecutionError> {
+        Ok(u64::from_le_bytes(self.read8(index)?))
+    }
+
+    pub fn write_i64(&mut self, index: usize, value: u64) -> Result<(), ExecutionError> {
+        self.write8(index, value.to_le_bytes())
+    }
+
+    pub fn read_f32(&self, index: usize) -> Result<F32Bytes, ExecutionError> {
+        Ok(F32Bytes::from_bytes(self.read4(index)?))
+    }
+
+    pub fn write_f32(&mut self, index: usize, value: F32Bytes) -> Result<(), ExecutionError> {
+        self.write4(index, value.to_bytes())
+    }
+
+    pub fn read_f64(&self, index: usize) -> Result<F64Bytes, ExecutionError> {
+        Ok(F64Bytes::from_bytes(self.read8(index)?))
+    }
+
+    pub fn write_f64(&mut self, index: usize, value: F64Bytes) -> Result<(), ExecutionError> {
+        self.write8(index, value.to_bytes())
     }
 
     pub fn grow(&mut self, page_size: usize) -> Result<Option<u32>, ExecutionError> {

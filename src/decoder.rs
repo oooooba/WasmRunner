@@ -309,8 +309,26 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x24 => Ok(Instr::new(SetGlobal(decode_globalidx(reader)?))),
 
         0x28 => Ok(Instr::new(Load(Valtype::I32, None, decode_memarg(reader)?))),
+        0x29 => Ok(Instr::new(Load(Valtype::I64, None, decode_memarg(reader)?))),
+        0x2A => Ok(Instr::new(Load(Valtype::F32, None, decode_memarg(reader)?))),
+        0x2B => Ok(Instr::new(Load(Valtype::F64, None, decode_memarg(reader)?))),
         0x36 => Ok(Instr::new(Store(
             Valtype::I32,
+            None,
+            decode_memarg(reader)?,
+        ))),
+        0x37 => Ok(Instr::new(Store(
+            Valtype::I64,
+            None,
+            decode_memarg(reader)?,
+        ))),
+        0x38 => Ok(Instr::new(Store(
+            Valtype::F32,
+            None,
+            decode_memarg(reader)?,
+        ))),
+        0x39 => Ok(Instr::new(Store(
+            Valtype::F64,
             None,
             decode_memarg(reader)?,
         ))),

@@ -778,6 +778,18 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     let v = meminst.read_i32(ea)?;
                     ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
                 }
+                (Valtype::I64, None) => {
+                    let v = meminst.read_i64(ea)?;
+                    ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
+                }
+                (Valtype::F32, None) => {
+                    let v = meminst.read_f32(ea)?;
+                    ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+                }
+                (Valtype::F64, None) => {
+                    let v = meminst.read_f64(ea)?;
+                    ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
+                }
                 _ => unimplemented!(),
             }
         }
@@ -790,6 +802,15 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             match (valtype, v.kind(), memop) {
                 (Valtype::I32, ValueKind::I32(c), None) => {
                     meminst.write_i32(ea, c).map(|_| Fallthrough)
+                }
+                (Valtype::I64, ValueKind::I64(c), None) => {
+                    meminst.write_i64(ea, c).map(|_| Fallthrough)
+                }
+                (Valtype::F32, ValueKind::F32(c), None) => {
+                    meminst.write_f32(ea, c).map(|_| Fallthrough)
+                }
+                (Valtype::F64, ValueKind::F64(c), None) => {
+                    meminst.write_f64(ea, c).map(|_| Fallthrough)
                 }
                 _ => unimplemented!(),
             }

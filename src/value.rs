@@ -12,8 +12,16 @@ impl F32Bytes {
         }
     }
 
+    pub fn from_bytes(bytes: [u8; 4]) -> Self {
+        Self { bytes }
+    }
+
     pub fn to_f32(self) -> f32 {
         f32::from_le_bytes(self.bytes)
+    }
+
+    pub fn to_bytes(self) -> [u8; 4] {
+        self.bytes
     }
 
     pub fn to_absolute_value(self) -> Self {
@@ -61,8 +69,16 @@ impl F64Bytes {
         }
     }
 
+    pub fn from_bytes(bytes: [u8; 8]) -> Self {
+        Self { bytes }
+    }
+
     pub fn to_f64(self) -> f64 {
         f64::from_le_bytes(self.bytes)
+    }
+
+    pub fn to_bytes(self) -> [u8; 8] {
+        self.bytes
     }
 
     pub fn to_absolute_value(self) -> Self {
