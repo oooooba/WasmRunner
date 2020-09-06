@@ -525,6 +525,10 @@ fn decode_tableidx<R: Read>(reader: &mut R) -> Result<Tableidx, DecodeError> {
     Ok(Tableidx::new(decode_u32(reader)?))
 }
 
+fn decode_memidx<R: Read>(reader: &mut R) -> Result<Memidx, DecodeError> {
+    Ok(Memidx::new(decode_u32(reader)?))
+}
+
 fn decode_globalidx<R: Read>(reader: &mut R) -> Result<Globalidx, DecodeError> {
     Ok(Globalidx::new(decode_u32(reader)?))
 }
@@ -762,6 +766,24 @@ fn decode_local<R: Read>(reader: &mut R) -> Result<Vec<Valtype>, DecodeError> {
     Ok(iter::repeat(t).take(n as usize).collect())
 }
 
+fn decode_datasec(section: &Section) -> Result<Vec<Data>, DecodeError> {
+    if section.id != SectionId::Data {
+        return Err(DecodeError::DecoderStateInconsistency(format!(
+            "must be data section, but id is {:?}",
+            section.id
+        )));
+    }
+    let mut reader = &section.contents[..];
+    decode_vec(&mut reader, decode_data)
+}
+
+fn decode_data<R: Read>(reader: &mut R) -> Result<Data, DecodeError> {
+    let data = decode_memidx(reader)?;
+    let offset = decode_expr(reader)?;
+    let init = decode_vec(reader, decode_byte)?;
+    Ok(Data::new(data, offset, init))
+}
+
 fn decode_magic<R: Read>(reader: &mut R) -> Result<(), DecodeError> {
     let magic = [0x00, 0x61, 0x73, 0x6D];
     for code in magic.iter() {
@@ -886,6 +908,14 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         _ => None,
     };
 
+    let data = match sections.last() {
+        Some(section) if section.id == SectionId::Data => {
+            let section = sections.pop().unwrap();
+            Some(decode_datasec(&section)?)
+        }
+        _ => None,
+    };
+
     if sections
         .iter()
         .any(|section| section.id != SectionId::Custom)
@@ -925,6 +955,7 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         globals.unwrap_or_default(),
         exports.unwrap_or_default(),
         elems.unwrap_or_default(),
+        data.unwrap_or_default(),
     ))
 }
 

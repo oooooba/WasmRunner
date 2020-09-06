@@ -12,6 +12,7 @@ pub struct Module {
     globals: Vec<Global>,
     exports: Vec<Export>,
     elems: Vec<Elem>,
+    data: Vec<Data>,
 }
 
 impl Module {
@@ -23,6 +24,7 @@ impl Module {
         globals: Vec<Global>,
         exports: Vec<Export>,
         elems: Vec<Elem>,
+        data: Vec<Data>,
     ) -> Self {
         Self {
             types,
@@ -32,6 +34,7 @@ impl Module {
             globals,
             exports,
             elems,
+            data,
         }
     }
 
@@ -171,6 +174,19 @@ impl Global {
 
     pub fn init(&self) -> &Expr {
         &self.init
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Data {
+    data: Memidx,
+    offset: Expr,
+    init: Vec<u8>,
+}
+
+impl Data {
+    pub fn new(data: Memidx, offset: Expr, init: Vec<u8>) -> Self {
+        Self { data, offset, init }
     }
 }
 
