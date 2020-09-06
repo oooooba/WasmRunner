@@ -353,88 +353,64 @@ impl Meminst {
         self.data.len()
     }
 
-    fn read1(&self, index: usize) -> Result<[u8; 1], ExecutionError> {
-        let mut bytes = [0u8; 8 / 8];
-        if index + bytes.len() > self.data.len() {
+    fn read_n(&self, buf: &mut [u8], buflen: usize, index: usize) -> Result<(), ExecutionError> {
+        if index + buflen > self.data.len() {
             unimplemented!() // @todo raise Error
         }
-        for i in 0..(bytes.len()) {
-            bytes[i] = self.data[index + i];
+        for i in 0..buflen {
+            buf[i] = self.data[index + i];
         }
+        Ok(())
+    }
+
+    fn write_n(&mut self, index: usize, buf: &[u8], buflen: usize) -> Result<(), ExecutionError> {
+        if index + buflen > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for (i, &b) in buf.iter().enumerate() {
+            self.data[index + i] = b;
+        }
+        Ok(())
+    }
+
+    fn read1(&self, index: usize) -> Result<[u8; 1], ExecutionError> {
+        let mut bytes = [0u8; 1];
+        self.read_n(&mut bytes, 1, index)?;
         Ok(bytes)
     }
 
     fn write1(&mut self, index: usize, bytes: [u8; 1]) -> Result<(), ExecutionError> {
-        if index + bytes.len() > self.data.len() {
-            unimplemented!() // @todo raise Error
-        }
-        for (i, &b) in bytes.iter().enumerate() {
-            self.data[index + i] = b;
-        }
-        Ok(())
+        self.write_n(index, &bytes, 1)
     }
 
     fn read2(&self, index: usize) -> Result<[u8; 2], ExecutionError> {
-        let mut bytes = [0u8; 16 / 8];
-        if index + bytes.len() > self.data.len() {
-            unimplemented!() // @todo raise Error
-        }
-        for i in 0..(bytes.len()) {
-            bytes[i] = self.data[index + i];
-        }
+        let mut bytes = [0u8; 2];
+        self.read_n(&mut bytes, 2, index)?;
         Ok(bytes)
     }
 
     fn write2(&mut self, index: usize, bytes: [u8; 2]) -> Result<(), ExecutionError> {
-        if index + bytes.len() > self.data.len() {
-            unimplemented!() // @todo raise Error
-        }
-        for (i, &b) in bytes.iter().enumerate() {
-            self.data[index + i] = b;
-        }
-        Ok(())
+        self.write_n(index, &bytes, 2)
     }
 
     fn read4(&self, index: usize) -> Result<[u8; 4], ExecutionError> {
-        let mut bytes = [0u8; 32 / 8];
-        if index + bytes.len() > self.data.len() {
-            unimplemented!() // @todo raise Error
-        }
-        for i in 0..(bytes.len()) {
-            bytes[i] = self.data[index + i];
-        }
+        let mut bytes = [0u8; 4];
+        self.read_n(&mut bytes, 4, index)?;
         Ok(bytes)
     }
 
     fn write4(&mut self, index: usize, bytes: [u8; 4]) -> Result<(), ExecutionError> {
-        if index + bytes.len() > self.data.len() {
-            unimplemented!() // @todo raise Error
-        }
-        for (i, &b) in bytes.iter().enumerate() {
-            self.data[index + i] = b;
-        }
-        Ok(())
+        self.write_n(index, &bytes, 4)
     }
 
     fn read8(&self, index: usize) -> Result<[u8; 8], ExecutionError> {
-        let mut bytes = [0u8; 64 / 8];
-        if index + bytes.len() > self.data.len() {
-            unimplemented!() // @todo raise Error
-        }
-        for i in 0..(bytes.len()) {
-            bytes[i] = self.data[index + i];
-        }
+        let mut bytes = [0u8; 8];
+        self.read_n(&mut bytes, 8, index)?;
         Ok(bytes)
     }
 
     fn write8(&mut self, index: usize, bytes: [u8; 8]) -> Result<(), ExecutionError> {
-        if index + bytes.len() > self.data.len() {
-            unimplemented!() // @todo raise Error
-        }
-        for (i, &b) in bytes.iter().enumerate() {
-            self.data[index + i] = b;
-        }
-        Ok(())
+        self.write_n(index, &bytes, 8)
     }
 
     pub fn read_i8(&self, index: usize) -> Result<u8, ExecutionError> {
