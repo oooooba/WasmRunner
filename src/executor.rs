@@ -713,6 +713,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
 
         Cvtop(op) => {
             let v = match op {
+                CvtopKind::I32WrapI64 => {
+                    Value::new(ValueKind::I32(ctx.stack_mut().pop_i64()? as u32))
+                }
                 CvtopKind::I32Extend8S => {
                     Value::new(ValueKind::I32(ctx.stack_mut().pop_i32()? as i8 as u32))
                 }
