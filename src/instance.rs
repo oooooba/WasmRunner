@@ -349,6 +349,48 @@ impl Meminst {
         Self { data, max }
     }
 
+    fn read1(&self, index: usize) -> Result<[u8; 1], ExecutionError> {
+        let mut bytes = [0u8; 8 / 8];
+        if index + bytes.len() > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for i in 0..(bytes.len()) {
+            bytes[i] = self.data[index + i];
+        }
+        Ok(bytes)
+    }
+
+    fn write1(&mut self, index: usize, bytes: [u8; 1]) -> Result<(), ExecutionError> {
+        if index + bytes.len() > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for (i, &b) in bytes.iter().enumerate() {
+            self.data[index + i] = b;
+        }
+        Ok(())
+    }
+
+    fn read2(&self, index: usize) -> Result<[u8; 2], ExecutionError> {
+        let mut bytes = [0u8; 16 / 8];
+        if index + bytes.len() > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for i in 0..(bytes.len()) {
+            bytes[i] = self.data[index + i];
+        }
+        Ok(bytes)
+    }
+
+    fn write2(&mut self, index: usize, bytes: [u8; 2]) -> Result<(), ExecutionError> {
+        if index + bytes.len() > self.data.len() {
+            unimplemented!() // @todo raise Error
+        }
+        for (i, &b) in bytes.iter().enumerate() {
+            self.data[index + i] = b;
+        }
+        Ok(())
+    }
+
     fn read4(&self, index: usize) -> Result<[u8; 4], ExecutionError> {
         let mut bytes = [0u8; 32 / 8];
         if index + bytes.len() > self.data.len() {
@@ -389,6 +431,22 @@ impl Meminst {
             self.data[index + i] = b;
         }
         Ok(())
+    }
+
+    pub fn read_i8(&self, index: usize) -> Result<u8, ExecutionError> {
+        Ok(u8::from_le_bytes(self.read1(index)?))
+    }
+
+    pub fn write_i8(&mut self, index: usize, value: u8) -> Result<(), ExecutionError> {
+        self.write1(index, value.to_le_bytes())
+    }
+
+    pub fn read_i16(&self, index: usize) -> Result<u16, ExecutionError> {
+        Ok(u16::from_le_bytes(self.read2(index)?))
+    }
+
+    pub fn write_i16(&mut self, index: usize, value: u16) -> Result<(), ExecutionError> {
+        self.write2(index, value.to_le_bytes())
     }
 
     pub fn read_i32(&self, index: usize) -> Result<u32, ExecutionError> {

@@ -768,52 +768,93 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             Ok(Fallthrough)
         }
 
-        Load(valtype, memop, memarg) => {
+        LoadI32(opt, memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
             let i = ctx.stack_mut().pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
             let meminst = &ctx.store.mems()[memaddr.to_usize()];
-            match (valtype, memop) {
-                (Valtype::I32, None) => {
-                    let v = meminst.read_i32(ea)?;
-                    ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
-                }
-                (Valtype::I64, None) => {
-                    let v = meminst.read_i64(ea)?;
-                    ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
-                }
-                (Valtype::F32, None) => {
-                    let v = meminst.read_f32(ea)?;
-                    ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
-                }
-                (Valtype::F64, None) => {
-                    let v = meminst.read_f64(ea)?;
-                    ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
-                }
-                _ => unimplemented!(),
-            }
+            let v = match opt {
+                None => meminst.read_i32(ea)?,
+                Some(LoadI32Opt::S8) => meminst.read_i8(ea)? as i8 as i32 as u32,
+                Some(LoadI32Opt::U8) => meminst.read_i8(ea)? as u32,
+                Some(LoadI32Opt::S16) => meminst.read_i16(ea)? as i16 as i32 as u32,
+                Some(LoadI32Opt::U16) => meminst.read_i16(ea)? as u32,
+            };
+            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
         }
-        Store(valtype, memop, memarg) => {
+        LoadI64(opt, memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let v = ctx.stack_mut().pop_value()?;
+            let i = ctx.stack_mut().pop_i64()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let v = match opt {
+                None => meminst.read_i64(ea)?,
+                Some(LoadI64Opt::S8) => meminst.read_i8(ea)? as i8 as i64 as u64,
+                Some(LoadI64Opt::U8) => meminst.read_i8(ea)? as u64,
+                Some(LoadI64Opt::S16) => meminst.read_i16(ea)? as i16 as i64 as u64,
+                Some(LoadI64Opt::U16) => meminst.read_i16(ea)? as u64,
+                Some(LoadI64Opt::S32) => meminst.read_i32(ea)? as i32 as i64 as u64,
+                Some(LoadI64Opt::U32) => meminst.read_i32(ea)? as u64,
+            };
+            ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
+        }
+        LoadF32(memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let v = meminst.read_f32(ea)?;
+            ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+        }
+        LoadF64(memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let v = meminst.read_f64(ea)?;
+            ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
+        }
+
+        StoreI32(opt, memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let v = ctx.stack_mut().pop_i32()?;
             let i = ctx.stack_mut().pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
             let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
-            match (valtype, v.kind(), memop) {
-                (Valtype::I32, ValueKind::I32(c), None) => {
-                    meminst.write_i32(ea, c).map(|_| Fallthrough)
-                }
-                (Valtype::I64, ValueKind::I64(c), None) => {
-                    meminst.write_i64(ea, c).map(|_| Fallthrough)
-                }
-                (Valtype::F32, ValueKind::F32(c), None) => {
-                    meminst.write_f32(ea, c).map(|_| Fallthrough)
-                }
-                (Valtype::F64, ValueKind::F64(c), None) => {
-                    meminst.write_f64(ea, c).map(|_| Fallthrough)
-                }
-                _ => unimplemented!(),
+            match opt {
+                None => meminst.write_i32(ea, v).map(|_| Fallthrough),
+                Some(StoreI32Opt::L8) => meminst.write_i8(ea, v as u8).map(|_| Fallthrough),
+                Some(StoreI32Opt::L16) => meminst.write_i16(ea, v as u16).map(|_| Fallthrough),
             }
+        }
+        StoreI64(opt, memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let v = ctx.stack_mut().pop_i64()?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            match opt {
+                None => meminst.write_i64(ea, v).map(|_| Fallthrough),
+                Some(StoreI64Opt::L8) => meminst.write_i8(ea, v as u8).map(|_| Fallthrough),
+                Some(StoreI64Opt::L16) => meminst.write_i16(ea, v as u16).map(|_| Fallthrough),
+                Some(StoreI64Opt::L32) => meminst.write_i32(ea, v as u32).map(|_| Fallthrough),
+            }
+        }
+        StoreF32(memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let v = ctx.stack_mut().pop_f32()?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            meminst.write_f32(ea, v).map(|_| Fallthrough)
+        }
+        StoreF64(memarg) => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let v = ctx.stack_mut().pop_f64()?;
+            let i = ctx.stack_mut().pop_i32()? as usize;
+            let ea = (memarg.offset() as usize) + i;
+            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            meminst.write_f64(ea, v).map(|_| Fallthrough)
         }
         Grow => {
             let n = ctx.stack_mut().pop_i32()? as usize;

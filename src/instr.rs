@@ -98,7 +98,35 @@ pub enum CvtopKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MemopKind {}
+pub enum LoadI32Opt {
+    S8,
+    U8,
+    S16,
+    U16,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LoadI64Opt {
+    S8,
+    U8,
+    S16,
+    U16,
+    S32,
+    U32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StoreI32Opt {
+    L8,
+    L16,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StoreI64Opt {
+    L8,
+    L16,
+    L32,
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Memarg {
@@ -153,8 +181,14 @@ pub enum InstrKind {
     GetGlobal(Globalidx),
     SetGlobal(Globalidx),
 
-    Load(Valtype, Option<MemopKind>, Memarg),
-    Store(Valtype, Option<MemopKind>, Memarg),
+    LoadI32(Option<LoadI32Opt>, Memarg),
+    LoadI64(Option<LoadI64Opt>, Memarg),
+    LoadF32(Memarg),
+    LoadF64(Memarg),
+    StoreI32(Option<StoreI32Opt>, Memarg),
+    StoreI64(Option<StoreI64Opt>, Memarg),
+    StoreF32(Memarg),
+    StoreF64(Memarg),
     Grow,
 
     Nop,

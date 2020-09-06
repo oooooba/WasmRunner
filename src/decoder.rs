@@ -308,28 +308,72 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x23 => Ok(Instr::new(GetGlobal(decode_globalidx(reader)?))),
         0x24 => Ok(Instr::new(SetGlobal(decode_globalidx(reader)?))),
 
-        0x28 => Ok(Instr::new(Load(Valtype::I32, None, decode_memarg(reader)?))),
-        0x29 => Ok(Instr::new(Load(Valtype::I64, None, decode_memarg(reader)?))),
-        0x2A => Ok(Instr::new(Load(Valtype::F32, None, decode_memarg(reader)?))),
-        0x2B => Ok(Instr::new(Load(Valtype::F64, None, decode_memarg(reader)?))),
-        0x36 => Ok(Instr::new(Store(
-            Valtype::I32,
-            None,
+        0x28 => Ok(Instr::new(LoadI32(None, decode_memarg(reader)?))),
+        0x29 => Ok(Instr::new(LoadI64(None, decode_memarg(reader)?))),
+        0x2A => Ok(Instr::new(LoadF32(decode_memarg(reader)?))),
+        0x2B => Ok(Instr::new(LoadF64(decode_memarg(reader)?))),
+        0x2C => Ok(Instr::new(LoadI32(
+            Some(LoadI32Opt::S8),
             decode_memarg(reader)?,
         ))),
-        0x37 => Ok(Instr::new(Store(
-            Valtype::I64,
-            None,
+        0x2D => Ok(Instr::new(LoadI32(
+            Some(LoadI32Opt::U8),
             decode_memarg(reader)?,
         ))),
-        0x38 => Ok(Instr::new(Store(
-            Valtype::F32,
-            None,
+        0x2E => Ok(Instr::new(LoadI32(
+            Some(LoadI32Opt::S16),
             decode_memarg(reader)?,
         ))),
-        0x39 => Ok(Instr::new(Store(
-            Valtype::F64,
-            None,
+        0x2F => Ok(Instr::new(LoadI32(
+            Some(LoadI32Opt::U16),
+            decode_memarg(reader)?,
+        ))),
+        0x30 => Ok(Instr::new(LoadI64(
+            Some(LoadI64Opt::S8),
+            decode_memarg(reader)?,
+        ))),
+        0x31 => Ok(Instr::new(LoadI64(
+            Some(LoadI64Opt::U8),
+            decode_memarg(reader)?,
+        ))),
+        0x32 => Ok(Instr::new(LoadI64(
+            Some(LoadI64Opt::S16),
+            decode_memarg(reader)?,
+        ))),
+        0x33 => Ok(Instr::new(LoadI64(
+            Some(LoadI64Opt::U16),
+            decode_memarg(reader)?,
+        ))),
+        0x34 => Ok(Instr::new(LoadI64(
+            Some(LoadI64Opt::S32),
+            decode_memarg(reader)?,
+        ))),
+        0x35 => Ok(Instr::new(LoadI64(
+            Some(LoadI64Opt::U32),
+            decode_memarg(reader)?,
+        ))),
+        0x36 => Ok(Instr::new(StoreI32(None, decode_memarg(reader)?))),
+        0x37 => Ok(Instr::new(StoreI64(None, decode_memarg(reader)?))),
+        0x38 => Ok(Instr::new(StoreF32(decode_memarg(reader)?))),
+        0x39 => Ok(Instr::new(StoreF64(decode_memarg(reader)?))),
+        0x3A => Ok(Instr::new(StoreI32(
+            Some(StoreI32Opt::L8),
+            decode_memarg(reader)?,
+        ))),
+        0x3B => Ok(Instr::new(StoreI32(
+            Some(StoreI32Opt::L16),
+            decode_memarg(reader)?,
+        ))),
+        0x3C => Ok(Instr::new(StoreI64(
+            Some(StoreI64Opt::L8),
+            decode_memarg(reader)?,
+        ))),
+        0x3D => Ok(Instr::new(StoreI64(
+            Some(StoreI64Opt::L16),
+            decode_memarg(reader)?,
+        ))),
+        0x3E => Ok(Instr::new(StoreI64(
+            Some(StoreI64Opt::L32),
             decode_memarg(reader)?,
         ))),
         0x40 => {
