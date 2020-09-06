@@ -349,6 +349,10 @@ impl Meminst {
         Self { data, max }
     }
 
+    pub fn size(&self) -> usize {
+        self.data.len()
+    }
+
     fn read1(&self, index: usize) -> Result<[u8; 1], ExecutionError> {
         let mut bytes = [0u8; 8 / 8];
         if index + bytes.len() > self.data.len() {

@@ -65,6 +65,10 @@ impl Module {
     pub fn elems(&self) -> &Vec<Elem> {
         &self.elems
     }
+
+    pub fn data(&self) -> &Vec<Data> {
+        &self.data
+    }
 }
 
 #[allow(unused_macros)]
@@ -187,6 +191,18 @@ pub struct Data {
 impl Data {
     pub fn new(data: Memidx, offset: Expr, init: Vec<u8>) -> Self {
         Self { data, offset, init }
+    }
+
+    pub fn data(&self) -> Memidx {
+        self.data
+    }
+
+    pub fn offset(&self) -> &Expr {
+        &self.offset
+    }
+
+    pub fn init(&self) -> &Vec<u8> {
+        &self.init
     }
 }
 

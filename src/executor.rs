@@ -1056,6 +1056,27 @@ pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionEr
         }
     }
 
+    for datum in module.data() {
+        let doval = eval(&mut ctx, datum.offset())?;
+        let dofst = match doval.kind() {
+            ValueKind::I32(n) => n as usize,
+            _ => unimplemented!(), // @todo raise Error
+        };
+
+        let memidx = datum.data();
+        let memaddr = moduleinst.resolve_memaddr(memidx)?;
+        let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+
+        let dend = dofst + datum.init().len();
+        if dend > meminst.size() {
+            unimplemented!() // @todo raise Error
+        }
+
+        for (i, &b) in datum.init().iter().enumerate() {
+            meminst.write_i8(dofst + i, b)?;
+        }
+    }
+
     Ok((moduleinst, ctx))
 }
 
