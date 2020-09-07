@@ -1263,6 +1263,7 @@ pub enum ExecutionError {
     ExplicitTrap,
     ZeroDivision,
     IntegerOverflow,
+    OutOfBoundsMemoryAccess,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1294,6 +1295,7 @@ impl fmt::Display for ExecutionError {
             ExplicitTrap => write!(f, "ExplicitTrap:"),
             ZeroDivision => write!(f, "ZeroDivision:"),
             IntegerOverflow => write!(f, "IntegerOverflow:"),
+            OutOfBoundsMemoryAccess => write!(f, "OutOfBoundsMemoryAccess:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }

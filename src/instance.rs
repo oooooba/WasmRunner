@@ -355,7 +355,7 @@ impl Meminst {
 
     fn read_n(&self, buf: &mut [u8], buflen: usize, index: usize) -> Result<(), ExecutionError> {
         if index + buflen > self.data.len() {
-            unimplemented!() // @todo raise Error
+            return Err(ExecutionError::OutOfBoundsMemoryAccess);
         }
         for i in 0..buflen {
             buf[i] = self.data[index + i];
@@ -365,7 +365,7 @@ impl Meminst {
 
     fn write_n(&mut self, index: usize, buf: &[u8], buflen: usize) -> Result<(), ExecutionError> {
         if index + buflen > self.data.len() {
-            unimplemented!() // @todo raise Error
+            return Err(ExecutionError::OutOfBoundsMemoryAccess);
         }
         for (i, &b) in buf.iter().enumerate() {
             self.data[index + i] = b;
