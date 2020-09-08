@@ -787,7 +787,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         }
         LoadI64(opt, memarg) => {
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let i = ctx.stack_mut().pop_i64()? as usize;
+            let i = ctx.stack_mut().pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
             let meminst = &ctx.store.mems()[memaddr.to_usize()];
             let v = match opt {
