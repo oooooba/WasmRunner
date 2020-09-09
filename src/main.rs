@@ -162,6 +162,9 @@ fn run_test(module_file_name: &str) {
                 let expected_trap = match message {
                     "integer divide by zero" => ExecutionError::ZeroDivision,
                     "integer overflow" => ExecutionError::IntegerOverflow,
+                    "out of bounds memory access" => ExecutionError::OutOfBoundsMemoryAccess,
+                    "undefined element" => ExecutionError::UndefinedElement,
+                    "indirect call type mismatch" => ExecutionError::IndirectCallTypeMismatch,
                     _ => unimplemented!(),
                 };
 
