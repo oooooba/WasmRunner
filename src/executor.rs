@@ -725,12 +725,16 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         }
 
         Cvtop(op) => {
-            let v = match op {
-                CvtopKind::I32WrapI64 => {
-                    Value::new(ValueKind::I32(ctx.stack_mut().pop_i64()? as u32))
+            let value_kind = match op {
+                CvtopKind::I32WrapI64 => ValueKind::I32(ctx.stack_mut().pop_i64()? as u32),
+                CvtopKind::I64ExtendI32S => {
+                    ValueKind::I64(ctx.stack_mut().pop_i32()? as i32 as i64 as u64)
                 }
+                CvtopKind::I64ExtendI32U => ValueKind::I64(ctx.stack_mut().pop_i32()? as u64),
             };
-            ctx.stack_mut().push_value(v).map(|_| Fallthrough)
+            ctx.stack_mut()
+                .push_value(Value::new(value_kind))
+                .map(|_| Fallthrough)
         }
 
         Drop => ctx.stack_mut().pop_value().map(|_| Fallthrough),

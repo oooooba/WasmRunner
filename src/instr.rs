@@ -100,6 +100,8 @@ pub enum FRelopKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CvtopKind {
     I32WrapI64,
+    I64ExtendI32S,
+    I64ExtendI32U,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
