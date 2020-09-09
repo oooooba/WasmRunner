@@ -961,7 +961,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let i = ctx.stack_mut().pop_i32()? as usize;
             let tableinst = &ctx.store.tables()[tableaddr.to_usize()];
             if i >= tableinst.elem().len() {
-                unimplemented!() // @todo raise Error
+                return Err(ExecutionError::UndefinedElement);
             }
             let typ = &ctx.current_frame().resolve_type(*typeidx)?;
             if tableinst.elem()[i].is_none() {
@@ -970,7 +970,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let funcaddr = tableinst.elem()[i].unwrap();
             let f = &ctx.store.funcs()[funcaddr.to_usize()];
             if typ != f.typ() {
-                unimplemented!() // @todo raise Error
+                return Err(ExecutionError::IndirectCallTypeMismatch);
             }
             invoke_func(ctx, funcaddr).map(|_| Fallthrough)
         }
@@ -1261,6 +1261,8 @@ pub enum ExecutionError {
     ZeroDivision,
     IntegerOverflow,
     OutOfBoundsMemoryAccess,
+    UndefinedElement,
+    IndirectCallTypeMismatch,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1293,6 +1295,8 @@ impl fmt::Display for ExecutionError {
             ZeroDivision => write!(f, "ZeroDivision:"),
             IntegerOverflow => write!(f, "IntegerOverflow:"),
             OutOfBoundsMemoryAccess => write!(f, "OutOfBoundsMemoryAccess:"),
+            UndefinedElement => write!(f, "UndefinedElement:"),
+            IndirectCallTypeMismatch => write!(f, "IndirectCallTypeMismatch:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }
