@@ -1199,7 +1199,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
     ctx.stack_mut().pop_frame()?;
     ctx.update_frame(prev_frame);
 
-    for ret in result {
+    while let Some(ret) = result.pop() {
         ctx.stack_mut().push_value(ret)?;
     }
 
@@ -1231,6 +1231,7 @@ pub fn invoke(
         let value = ctx.stack_mut().pop_value()?;
         result_values.push(value);
     }
+    result_values.reverse();
 
     ctx.stack_mut().pop_frame()?;
     ctx.update_frame(dummy_frame);
