@@ -49,6 +49,15 @@ pub enum FUnopKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExtendKind {
+    I32As8S,
+    I32As16S,
+    I64As8S,
+    I64As16S,
+    I64As32S,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FBinopKind {
     Add,
     Sub,
@@ -91,11 +100,6 @@ pub enum FRelopKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CvtopKind {
     I32WrapI64,
-    I32Extend8S,
-    I32Extend16S,
-    I64Extend8S,
-    I64Extend16S,
-    I64Extend32S,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -161,6 +165,7 @@ pub enum InstrKind {
     UnopI64(IUnopKind),
     UnopF32(FUnopKind),
     UnopF64(FUnopKind),
+    Extend(ExtendKind),
     BinopI32(IBinopKind),
     BinopI64(IBinopKind),
     BinopF32(FBinopKind),

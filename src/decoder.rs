@@ -497,11 +497,11 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
 
         0xA7 => Ok(Instr::new(Cvtop(CvtopKind::I32WrapI64))),
 
-        0xC0 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend8S))),
-        0xC1 => Ok(Instr::new(Cvtop(CvtopKind::I32Extend16S))),
-        0xC2 => Ok(Instr::new(Cvtop(CvtopKind::I64Extend8S))),
-        0xC3 => Ok(Instr::new(Cvtop(CvtopKind::I64Extend16S))),
-        0xC4 => Ok(Instr::new(Cvtop(CvtopKind::I64Extend32S))),
+        0xC0 => Ok(Instr::new(Extend(ExtendKind::I32As8S))),
+        0xC1 => Ok(Instr::new(Extend(ExtendKind::I32As16S))),
+        0xC2 => Ok(Instr::new(Extend(ExtendKind::I64As8S))),
+        0xC3 => Ok(Instr::new(Extend(ExtendKind::I64As16S))),
+        0xC4 => Ok(Instr::new(Extend(ExtendKind::I64As32S))),
 
         _ => panic!("unhandled opcode: {}", b),
     }

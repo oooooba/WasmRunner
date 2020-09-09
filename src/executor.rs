@@ -412,6 +412,19 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
         }
 
+        Extend(kind) => {
+            let value_kind = match kind {
+                ExtendKind::I32As8S => ValueKind::I32(ctx.stack_mut().pop_i32()? as i8 as u32),
+                ExtendKind::I32As16S => ValueKind::I32(ctx.stack_mut().pop_i32()? as i16 as u32),
+                ExtendKind::I64As8S => ValueKind::I64(ctx.stack_mut().pop_i64()? as i8 as u64),
+                ExtendKind::I64As16S => ValueKind::I64(ctx.stack_mut().pop_i64()? as i16 as u64),
+                ExtendKind::I64As32S => ValueKind::I64(ctx.stack_mut().pop_i64()? as i32 as u64),
+            };
+            ctx.stack_mut()
+                .push_value(Value::new(value_kind))
+                .map(|_| Fallthrough)
+        }
+
         BinopI32(op) => {
             let c2 = ctx.stack_mut().pop_i32()?;
             let c1 = ctx.stack_mut().pop_i32()?;
@@ -715,21 +728,6 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let v = match op {
                 CvtopKind::I32WrapI64 => {
                     Value::new(ValueKind::I32(ctx.stack_mut().pop_i64()? as u32))
-                }
-                CvtopKind::I32Extend8S => {
-                    Value::new(ValueKind::I32(ctx.stack_mut().pop_i32()? as i8 as u32))
-                }
-                CvtopKind::I32Extend16S => {
-                    Value::new(ValueKind::I32(ctx.stack_mut().pop_i32()? as i16 as u32))
-                }
-                CvtopKind::I64Extend8S => {
-                    Value::new(ValueKind::I64(ctx.stack_mut().pop_i64()? as i8 as u64))
-                }
-                CvtopKind::I64Extend16S => {
-                    Value::new(ValueKind::I64(ctx.stack_mut().pop_i64()? as i16 as u64))
-                }
-                CvtopKind::I64Extend32S => {
-                    Value::new(ValueKind::I64(ctx.stack_mut().pop_i64()? as i32 as u64))
                 }
             };
             ctx.stack_mut().push_value(v).map(|_| Fallthrough)
