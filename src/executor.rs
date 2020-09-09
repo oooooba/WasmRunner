@@ -1137,7 +1137,7 @@ fn execute_instr_seq(
     Ok(Control::Fallthrough)
 }
 
-fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<Control, ExecutionError> {
+fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
     let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
     let func = funcinst.code().clone();
 
@@ -1183,10 +1183,9 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<Control, Executi
 
     let label = Label::new(return_size);
     let ctrl = execute_instr_seq(ctx, body.instr_seq(), 0, label)?;
-    let ctrl = match ctrl {
-        Control::Branch(_) => unreachable!(),
-        Control::Fallthrough => Control::Fallthrough,
-        Control::Return => Control::Fallthrough,
+    match ctrl {
+        Control::Branch(count) if count > 0 => panic!(),
+        _ => (),
     };
 
     let mut result = Vec::new();
@@ -1202,7 +1201,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<Control, Executi
         ctx.stack_mut().push_value(ret)?;
     }
 
-    Ok(ctrl)
+    Ok(())
 }
 
 pub fn invoke(
@@ -1223,12 +1222,7 @@ pub fn invoke(
         ctx.stack_mut().push_value(arg)?;
     }
 
-    let ctrl = invoke_func(ctx, funcaddr)?;
-    match ctrl {
-        Control::Branch(_) => unreachable!(),
-        Control::Fallthrough => (),
-        Control::Return => unreachable!(),
-    };
+    invoke_func(ctx, funcaddr)?;
 
     let mut result_values = Vec::new();
     for _ in 0..return_size {
