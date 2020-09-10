@@ -496,7 +496,10 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0xA6 => Ok(Instr::new(BinopF64(FBinopKind::Copysign))),
 
         0xA7 => Ok(Instr::new(Cvtop(CvtopKind::I32WrapI64))),
-
+        0xA8 => Ok(Instr::new(Cvtop(CvtopKind::I32TruncF32S))),
+        0xA9 => Ok(Instr::new(Cvtop(CvtopKind::I32TruncF32U))),
+        0xAA => Ok(Instr::new(Cvtop(CvtopKind::I32TruncF64S))),
+        0xAB => Ok(Instr::new(Cvtop(CvtopKind::I32TruncF64U))),
         0xAC => Ok(Instr::new(Cvtop(CvtopKind::I64ExtendI32S))),
         0xAD => Ok(Instr::new(Cvtop(CvtopKind::I64ExtendI32U))),
 

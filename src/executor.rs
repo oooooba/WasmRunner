@@ -731,6 +731,18 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(ctx.stack_mut().pop_i32()? as i32 as i64 as u64)
                 }
                 CvtopKind::I64ExtendI32U => ValueKind::I64(ctx.stack_mut().pop_i32()? as u64),
+                CvtopKind::I32TruncF32S => {
+                    ValueKind::I32(ctx.stack_mut().pop_f32()?.to_f32() as i32 as u32)
+                }
+                CvtopKind::I32TruncF32U => {
+                    ValueKind::I32(ctx.stack_mut().pop_f32()?.to_f32() as u32)
+                }
+                CvtopKind::I32TruncF64S => {
+                    ValueKind::I32(ctx.stack_mut().pop_f64()?.to_f64() as i64 as u32)
+                }
+                CvtopKind::I32TruncF64U => {
+                    ValueKind::I32(ctx.stack_mut().pop_f64()?.to_f64() as u32)
+                }
             };
             ctx.stack_mut()
                 .push_value(Value::new(value_kind))

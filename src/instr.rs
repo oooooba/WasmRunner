@@ -102,6 +102,10 @@ pub enum CvtopKind {
     I32WrapI64,
     I64ExtendI32S,
     I64ExtendI32U,
+    I32TruncF32S,
+    I32TruncF32U,
+    I32TruncF64S,
+    I32TruncF64U,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
