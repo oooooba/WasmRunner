@@ -151,6 +151,9 @@ fn run_test(module_file_name: &str) {
                                 let value_kind = match arg.instrs[0] {
                                     I32Const(x) => ValueKind::I32(x as u32),
                                     I64Const(x) => ValueKind::I64(x as u64),
+                                    F32Const(ref x) => {
+                                        ValueKind::F32(F32Bytes::from_bytes(x.bits.to_le_bytes()))
+                                    }
                                     _ => unimplemented!(),
                                 };
                                 Value::new(value_kind)
