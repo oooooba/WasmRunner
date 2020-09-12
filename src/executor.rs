@@ -736,6 +736,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
+                    }
                     let v = v.to_f32() as i64;
                     if !(i32::MIN as i64 <= v && v <= i32::MAX as i64) {
                         return Err(ExecutionError::IntegerOverflow);
@@ -746,6 +749,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     let v = ctx.stack_mut().pop_f32()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
+                    }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
                     }
                     let v = v.to_f32() as i64;
                     if !(0 <= v && v <= u32::MAX as i64) {
@@ -758,6 +764,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
+                    }
                     let v = v.to_f64() as i64;
                     if !(i32::MIN as i64 <= v && v <= i32::MAX as i64) {
                         return Err(ExecutionError::IntegerOverflow);
@@ -768,6 +777,9 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     let v = ctx.stack_mut().pop_f64()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
+                    }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
                     }
                     let v = v.to_f64() as i64;
                     if !(0 <= v && v <= u32::MAX as i64) {
@@ -1307,6 +1319,7 @@ pub enum ExecutionError {
     OutOfBoundsMemoryAccess,
     UndefinedElement,
     IndirectCallTypeMismatch,
+    InvalidConversionToInteger,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1341,6 +1354,7 @@ impl fmt::Display for ExecutionError {
             OutOfBoundsMemoryAccess => write!(f, "OutOfBoundsMemoryAccess:"),
             UndefinedElement => write!(f, "UndefinedElement:"),
             IndirectCallTypeMismatch => write!(f, "IndirectCallTypeMismatch:"),
+            InvalidConversionToInteger => write!(f, "InvalidConversionToInteger:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }
