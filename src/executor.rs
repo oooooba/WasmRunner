@@ -732,16 +732,48 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 }
                 CvtopKind::I64ExtendI32U => ValueKind::I64(ctx.stack_mut().pop_i32()? as u64),
                 CvtopKind::I32TruncF32S => {
-                    ValueKind::I32(ctx.stack_mut().pop_f32()?.to_f32() as i32 as u32)
+                    let v = ctx.stack_mut().pop_f32()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    let v = v.to_f32() as i64;
+                    if !(i32::MIN as i64 <= v && v <= i32::MAX as i64) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I32(v as i32 as u32)
                 }
                 CvtopKind::I32TruncF32U => {
-                    ValueKind::I32(ctx.stack_mut().pop_f32()?.to_f32() as u32)
+                    let v = ctx.stack_mut().pop_f32()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    let v = v.to_f32() as i64;
+                    if !(0 <= v && v <= u32::MAX as i64) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I32(v as u32)
                 }
                 CvtopKind::I32TruncF64S => {
-                    ValueKind::I32(ctx.stack_mut().pop_f64()?.to_f64() as i64 as u32)
+                    let v = ctx.stack_mut().pop_f64()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    let v = v.to_f64() as i64;
+                    if !(i32::MIN as i64 <= v && v <= i32::MAX as i64) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I32(v as i32 as u32)
                 }
                 CvtopKind::I32TruncF64U => {
-                    ValueKind::I32(ctx.stack_mut().pop_f64()?.to_f64() as u32)
+                    let v = ctx.stack_mut().pop_f64()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    let v = v.to_f64() as i64;
+                    if !(0 <= v && v <= u32::MAX as i64) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I32(v as u32)
                 }
             };
             ctx.stack_mut()

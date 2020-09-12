@@ -55,6 +55,10 @@ impl F32Bytes {
     pub fn is_nan(self) -> bool {
         self.to_f32().is_nan()
     }
+
+    pub fn is_infinite(self) -> bool {
+        self.to_f32().is_infinite()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +125,10 @@ impl F64Bytes {
 
     pub fn is_nan(self) -> bool {
         self.to_f64().is_nan()
+    }
+
+    pub fn is_infinite(self) -> bool {
+        self.to_f64().is_infinite()
     }
 }
 
