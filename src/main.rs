@@ -154,6 +154,9 @@ fn run_test(module_file_name: &str) {
                                     F32Const(ref x) => {
                                         ValueKind::F32(F32Bytes::from_bytes(x.bits.to_le_bytes()))
                                     }
+                                    F64Const(ref x) => {
+                                        ValueKind::F64(F64Bytes::from_bytes(x.bits.to_le_bytes()))
+                                    }
                                     _ => unimplemented!(),
                                 };
                                 Value::new(value_kind)
