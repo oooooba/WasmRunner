@@ -842,17 +842,18 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
 
     sections.reverse();
 
-    // @todo handle Custom Sections correctly
-    loop {
-        match sections.last() {
-            Some(section) if section.id == SectionId::Custom => {
-                return Err(DecodeError::InvalidHeaderFormat(
-                    "custom section is not supported".to_string(),
-                ));
-            }
-            _ => break,
+    let mut sections = {
+        let len = sections.len();
+        let sections: Vec<Section> = sections
+            .into_iter()
+            .filter(|section| section.id != SectionId::Custom)
+            .collect();
+        if sections.len() != len {
+            // @todo handle Custom Sections correctly
+            eprintln!("custom section is not supported");
         }
-    }
+        sections
+    };
 
     let types = match sections.last() {
         Some(section) if section.id == SectionId::Type => {
@@ -925,16 +926,6 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         }
         _ => None,
     };
-
-    if sections
-        .iter()
-        .any(|section| section.id != SectionId::Custom)
-    {
-        return Err(DecodeError::InvalidHeaderFormat(format!(
-            "remain unprocessed sections ({:?})",
-            sections
-        )));
-    }
 
     let funcs = match (func_declarations, code) {
         (Some(func_declarations), Some(code)) => {
