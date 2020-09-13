@@ -513,6 +513,24 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0xC3 => Ok(Instr::new(Extend(ExtendKind::I64As16S))),
         0xC4 => Ok(Instr::new(Extend(ExtendKind::I64As32S))),
 
+        0xFC => {
+            let prefix = decode_u32(reader)? as usize;
+            let trunc_sat_kinds = [
+                CvtopKind::I32TruncSatF32S,
+                CvtopKind::I32TruncSatF32U,
+                CvtopKind::I32TruncSatF64S,
+                CvtopKind::I32TruncSatF64U,
+                CvtopKind::I64TruncSatF32S,
+                CvtopKind::I64TruncSatF32U,
+                CvtopKind::I64TruncSatF64S,
+                CvtopKind::I64TruncSatF64U,
+            ];
+            if prefix > trunc_sat_kinds.len() {
+                unimplemented!(); // @todo raise Error
+            }
+            Ok(Instr::new(Cvtop(trunc_sat_kinds[prefix])))
+        }
+
         _ => panic!("unhandled opcode: {}", b),
     }
 }

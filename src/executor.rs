@@ -843,6 +843,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                     ValueKind::I64(v as u64)
                 }
+                _ => unimplemented!(),
             };
             ctx.stack_mut()
                 .push_value(Value::new(value_kind))
