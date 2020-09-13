@@ -502,6 +502,10 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0xAB => Ok(Instr::new(Cvtop(CvtopKind::I32TruncF64U))),
         0xAC => Ok(Instr::new(Cvtop(CvtopKind::I64ExtendI32S))),
         0xAD => Ok(Instr::new(Cvtop(CvtopKind::I64ExtendI32U))),
+        0xAE => Ok(Instr::new(Cvtop(CvtopKind::I64TruncF32S))),
+        0xAF => Ok(Instr::new(Cvtop(CvtopKind::I64TruncF32U))),
+        0xB0 => Ok(Instr::new(Cvtop(CvtopKind::I64TruncF64S))),
+        0xB1 => Ok(Instr::new(Cvtop(CvtopKind::I64TruncF64U))),
 
         0xC0 => Ok(Instr::new(Extend(ExtendKind::I32As8S))),
         0xC1 => Ok(Instr::new(Extend(ExtendKind::I32As16S))),

@@ -787,6 +787,62 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                     ValueKind::I32(v as u32)
                 }
+                CvtopKind::I64TruncF32S => {
+                    let v = ctx.stack_mut().pop_f32()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
+                    }
+                    let v = v.to_f32() as i128;
+                    if !(i64::MIN as i128 <= v && v <= i64::MAX as i128) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I64(v as i64 as u64)
+                }
+                CvtopKind::I64TruncF32U => {
+                    let v = ctx.stack_mut().pop_f32()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
+                    }
+                    let v = v.to_f32() as i128;
+                    if !(0 <= v && v <= u64::MAX as i128) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I64(v as u64)
+                }
+                CvtopKind::I64TruncF64S => {
+                    let v = ctx.stack_mut().pop_f64()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
+                    }
+                    let v = v.to_f64() as i128;
+                    if !(i64::MIN as i128 <= v && v <= i64::MAX as i128) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I64(v as i64 as u64)
+                }
+                CvtopKind::I64TruncF64U => {
+                    let v = ctx.stack_mut().pop_f64()?;
+                    if v.is_infinite() {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    if v.is_nan() {
+                        return Err(ExecutionError::InvalidConversionToInteger);
+                    }
+                    let v = v.to_f64() as i128;
+                    if !(0 <= v && v <= u64::MAX as i128) {
+                        return Err(ExecutionError::IntegerOverflow);
+                    }
+                    ValueKind::I64(v as u64)
+                }
             };
             ctx.stack_mut()
                 .push_value(Value::new(value_kind))
