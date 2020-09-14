@@ -843,6 +843,82 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     }
                     ValueKind::I64(v as u64)
                 }
+                CvtopKind::I32TruncSatF32S => {
+                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            i32::MIN
+                        } else {
+                            i32::MAX
+                        }
+                    } else if (v as i64) < (i32::MIN as i64) {
+                        i32::MIN
+                    } else if (v as i64) > (i32::MAX as i64) {
+                        i32::MAX
+                    } else {
+                        v as i32
+                    };
+                    ValueKind::I32(v as u32)
+                }
+                CvtopKind::I32TruncSatF32U => {
+                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            u32::MIN
+                        } else {
+                            u32::MAX
+                        }
+                    } else if (v as i64) < (u32::MIN as i64) {
+                        u32::MIN
+                    } else if (v as i64) > (u32::MAX as i64) {
+                        u32::MAX
+                    } else {
+                        v as u32
+                    };
+                    ValueKind::I32(v)
+                }
+                CvtopKind::I32TruncSatF64S => {
+                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            i32::MIN
+                        } else {
+                            i32::MAX
+                        }
+                    } else if (v as i64) < (i32::MIN as i64) {
+                        i32::MIN
+                    } else if (v as i64) > (i32::MAX as i64) {
+                        i32::MAX
+                    } else {
+                        v as i32
+                    };
+                    ValueKind::I32(v as u32)
+                }
+                CvtopKind::I32TruncSatF64U => {
+                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            u32::MIN
+                        } else {
+                            u32::MAX
+                        }
+                    } else if (v as i64) < (u32::MIN as i64) {
+                        u32::MIN
+                    } else if (v as i64) > (u32::MAX as i64) {
+                        u32::MAX
+                    } else {
+                        v as u32
+                    };
+                    ValueKind::I32(v)
+                }
                 _ => unimplemented!(),
             };
             ctx.stack_mut()
