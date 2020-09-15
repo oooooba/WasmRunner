@@ -919,7 +919,82 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     };
                     ValueKind::I32(v)
                 }
-                _ => unimplemented!(),
+                CvtopKind::I64TruncSatF32S => {
+                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            i64::MIN
+                        } else {
+                            i64::MAX
+                        }
+                    } else if (v as i128) < (i64::MIN as i128) {
+                        i64::MIN
+                    } else if (v as i128) > (i64::MAX as i128) {
+                        i64::MAX
+                    } else {
+                        v as i64
+                    };
+                    ValueKind::I64(v as u64)
+                }
+                CvtopKind::I64TruncSatF32U => {
+                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            u64::MIN
+                        } else {
+                            u64::MAX
+                        }
+                    } else if (v as i128) < (u64::MIN as i128) {
+                        u64::MIN
+                    } else if (v as i128) > (u64::MAX as i128) {
+                        u64::MAX
+                    } else {
+                        v as u64
+                    };
+                    ValueKind::I64(v)
+                }
+                CvtopKind::I64TruncSatF64S => {
+                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            i64::MIN
+                        } else {
+                            i64::MAX
+                        }
+                    } else if (v as i128) < (i64::MIN as i128) {
+                        i64::MIN
+                    } else if (v as i128) > (i64::MAX as i128) {
+                        i64::MAX
+                    } else {
+                        v as i64
+                    };
+                    ValueKind::I64(v as u64)
+                }
+                CvtopKind::I64TruncSatF64U => {
+                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = if v.is_nan() {
+                        0
+                    } else if v.is_infinite() {
+                        if v.is_sign_negative() {
+                            u64::MIN
+                        } else {
+                            u64::MAX
+                        }
+                    } else if (v as i128) < (u64::MIN as i128) {
+                        u64::MIN
+                    } else if (v as i128) > (u64::MAX as i128) {
+                        u64::MAX
+                    } else {
+                        v as u64
+                    };
+                    ValueKind::I64(v)
+                }
             };
             ctx.stack_mut()
                 .push_value(Value::new(value_kind))
