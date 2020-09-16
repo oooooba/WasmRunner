@@ -118,6 +118,14 @@ pub enum CvtopKind {
     I64TruncSatF32U,
     I64TruncSatF64S,
     I64TruncSatF64U,
+    F32ConvertI32S,
+    F32ConvertI32U,
+    F32ConvertI64S,
+    F32ConvertI64U,
+    F64ConvertI32S,
+    F64ConvertI32U,
+    F64ConvertI64S,
+    F64ConvertI64U,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

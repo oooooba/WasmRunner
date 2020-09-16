@@ -995,6 +995,30 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     };
                     ValueKind::I64(v)
                 }
+                CvtopKind::F32ConvertI32S => {
+                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i32()? as i32 as f32))
+                }
+                CvtopKind::F32ConvertI32U => {
+                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i32()? as f32))
+                }
+                CvtopKind::F32ConvertI64S => {
+                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i64()? as i64 as f32))
+                }
+                CvtopKind::F32ConvertI64U => {
+                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i64()? as f32))
+                }
+                CvtopKind::F64ConvertI32S => {
+                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i32()? as i32 as f64))
+                }
+                CvtopKind::F64ConvertI32U => {
+                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i32()? as f64))
+                }
+                CvtopKind::F64ConvertI64S => {
+                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i64()? as i64 as f64))
+                }
+                CvtopKind::F64ConvertI64U => {
+                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i64()? as f64))
+                }
             };
             ctx.stack_mut()
                 .push_value(Value::new(value_kind))
