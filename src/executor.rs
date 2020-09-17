@@ -1019,6 +1019,15 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 CvtopKind::F64ConvertI64U => {
                     ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i64()? as f64))
                 }
+                CvtopKind::F64PromoteF32 => {
+                    let v = ctx.stack_mut().pop_f32()?;
+                    let v = if v.is_nan() {
+                        f64::NAN
+                    } else {
+                        v.to_f32() as f64
+                    };
+                    ValueKind::F64(F64Bytes::new(v))
+                }
             };
             ctx.stack_mut()
                 .push_value(Value::new(value_kind))
