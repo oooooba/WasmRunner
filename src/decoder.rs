@@ -510,7 +510,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0xB3 => Ok(Instr::new(Cvtop(CvtopKind::F32ConvertI32U))),
         0xB4 => Ok(Instr::new(Cvtop(CvtopKind::F32ConvertI64S))),
         0xB5 => Ok(Instr::new(Cvtop(CvtopKind::F32ConvertI64U))),
-
+        0xB6 => Ok(Instr::new(Cvtop(CvtopKind::F32DemoteF64))),
         0xB7 => Ok(Instr::new(Cvtop(CvtopKind::F64ConvertI32S))),
         0xB8 => Ok(Instr::new(Cvtop(CvtopKind::F64ConvertI32U))),
         0xB9 => Ok(Instr::new(Cvtop(CvtopKind::F64ConvertI64S))),

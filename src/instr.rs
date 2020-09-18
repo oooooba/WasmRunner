@@ -126,6 +126,7 @@ pub enum CvtopKind {
     F64ConvertI32U,
     F64ConvertI64S,
     F64ConvertI64U,
+    F32DemoteF64,
     F64PromoteF32,
 }
 
