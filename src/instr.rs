@@ -128,6 +128,10 @@ pub enum CvtopKind {
     F64ConvertI64U,
     F32DemoteF64,
     F64PromoteF32,
+    I32ReinterpretF32,
+    I64ReinterpretF64,
+    F32ReinterpretI32,
+    F64ReinterpretI64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

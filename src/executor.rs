@@ -1037,6 +1037,18 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     };
                     ValueKind::F64(F64Bytes::new(v))
                 }
+                CvtopKind::I32ReinterpretF32 => {
+                    ValueKind::I32(u32::from_le_bytes(ctx.stack_mut().pop_f32()?.to_bytes()))
+                }
+                CvtopKind::I64ReinterpretF64 => {
+                    ValueKind::I64(u64::from_le_bytes(ctx.stack_mut().pop_f64()?.to_bytes()))
+                }
+                CvtopKind::F32ReinterpretI32 => ValueKind::F32(F32Bytes::from_bytes(
+                    ctx.stack_mut().pop_i32()?.to_le_bytes(),
+                )),
+                CvtopKind::F64ReinterpretI64 => ValueKind::F64(F64Bytes::from_bytes(
+                    ctx.stack_mut().pop_i64()?.to_le_bytes(),
+                )),
             };
             ctx.stack_mut()
                 .push_value(Value::new(value_kind))
