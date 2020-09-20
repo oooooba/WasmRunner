@@ -741,6 +741,17 @@ fn decode_exportdesc<R: Read>(reader: &mut R) -> Result<Exportdesc, DecodeError>
     }
 }
 
+fn decode_startsec(section: &Section) -> Result<Funcidx, DecodeError> {
+    if section.id != SectionId::Start {
+        return Err(DecodeError::DecoderStateInconsistency(format!(
+            "must be start section, but id is {:?}",
+            section.id
+        )));
+    }
+    let mut reader = &section.contents[..];
+    decode_funcidx(&mut reader)
+}
+
 fn decode_elemsec(section: &Section) -> Result<Vec<Elem>, DecodeError> {
     if section.id != SectionId::Element {
         return Err(DecodeError::DecoderStateInconsistency(format!(
@@ -935,6 +946,14 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         _ => None,
     };
 
+    let start = match sections.last() {
+        Some(section) if section.id == SectionId::Start => {
+            let section = sections.pop().unwrap();
+            Some(decode_startsec(&section)?)
+        }
+        _ => None,
+    };
+
     let elems = match sections.last() {
         Some(section) if section.id == SectionId::Element => {
             let section = sections.pop().unwrap();
@@ -987,6 +1006,7 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         mems.unwrap_or_default(),
         globals.unwrap_or_default(),
         exports.unwrap_or_default(),
+        start,
         elems.unwrap_or_default(),
         data.unwrap_or_default(),
     ))

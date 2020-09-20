@@ -11,6 +11,7 @@ pub struct Module {
     mems: Vec<Mem>,
     globals: Vec<Global>,
     exports: Vec<Export>,
+    start: Option<Funcidx>,
     elems: Vec<Elem>,
     data: Vec<Data>,
 }
@@ -23,6 +24,7 @@ impl Module {
         mems: Vec<Mem>,
         globals: Vec<Global>,
         exports: Vec<Export>,
+        start: Option<Funcidx>,
         elems: Vec<Elem>,
         data: Vec<Data>,
     ) -> Self {
@@ -33,6 +35,7 @@ impl Module {
             mems,
             globals,
             exports,
+            start,
             elems,
             data,
         }
