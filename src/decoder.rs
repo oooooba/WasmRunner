@@ -991,6 +991,8 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
                     .collect(),
             )
         }
+        (Some(func_declarations), None) if func_declarations.is_empty() => None,
+        (None, Some(code)) if code.is_empty() => None,
         (None, None) => None,
         _ => {
             return Err(DecodeError::InvalidHeaderFormat(
