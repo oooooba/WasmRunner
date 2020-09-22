@@ -1344,11 +1344,10 @@ pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionEr
 
     let moduleinst = ctx.store.instantiate(module, initial_global_values)?;
 
-    // @todo push Frame
-
-    let mut offsets = Vec::new();
     for elem in module.elems() {
+        // @todo push Frame
         let eoval = eval(&mut ctx, elem.offset())?;
+        // @todo pop Frame
         let eo = match eoval.kind() {
             ValueKind::I32(n) => n as usize,
             _ => unimplemented!(), // @todo raise Error
@@ -1356,20 +1355,13 @@ pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionEr
 
         let tableidx = elem.table();
         let tableaddr = moduleinst.resolve_tableaddr(tableidx)?;
-        let tableinst = &ctx.store.tables()[tableaddr.to_usize()];
+        let tableinst = &mut ctx.store.tables_mut()[tableaddr.to_usize()];
 
         let eend = eo + elem.init().len();
         if eend > tableinst.elem().len() {
             unimplemented!() // @todo raise Error
         }
 
-        offsets.push(eo);
-    }
-
-    // @todo pop Frame
-
-    for (i, (elem, eo)) in module.elems().iter().zip(offsets.iter()).enumerate() {
-        let tableinst = &mut ctx.store.tables_mut()[i];
         for (j, funcidx) in elem.init().iter().enumerate() {
             let funcaddr = moduleinst.resolve_funcaddr(*funcidx)?;
             tableinst.elem_mut()[eo + j] = Some(funcaddr);
