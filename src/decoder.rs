@@ -653,6 +653,35 @@ fn decode_typesec(section: &Section) -> Result<Vec<Functype>, DecodeError> {
     decode_vec(&mut reader, decode_functype)
 }
 
+fn decode_importsec(section: &Section) -> Result<Vec<Import>, DecodeError> {
+    if section.id != SectionId::Import {
+        return Err(DecodeError::DecoderStateInconsistency(format!(
+            "must be import section, but id is {:?}",
+            section.id
+        )));
+    }
+    let mut reader = &section.contents[..];
+    decode_vec(&mut reader, decode_import)
+}
+
+fn decode_import<R: Read>(reader: &mut R) -> Result<Import, DecodeError> {
+    let module = decode_name(reader)?;
+    let name = decode_name(reader)?;
+    let desc = decode_importdesc(reader)?;
+    Ok(Import::new(module, name, desc))
+}
+
+fn decode_importdesc<R: Read>(reader: &mut R) -> Result<Importdesc, DecodeError> {
+    let b = decode_byte(reader)?;
+    match b {
+        0x00 => Ok(Importdesc::Func(decode_typeidx(reader)?)),
+        0x01 => Ok(Importdesc::Table(decode_tabletype(reader)?)),
+        0x02 => Ok(Importdesc::Mem(decode_memtype(reader)?)),
+        0x03 => Ok(Importdesc::Global(decode_globaltype(reader)?)),
+        _ => unimplemented!(), // @todo raise error
+    }
+}
+
 fn decode_funcsec(section: &Section) -> Result<Vec<Typeidx>, DecodeError> {
     if section.id != SectionId::Function {
         return Err(DecodeError::DecoderStateInconsistency(format!(
@@ -906,6 +935,14 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         _ => None,
     };
 
+    let imports = match sections.last() {
+        Some(section) if section.id == SectionId::Import => {
+            let section = sections.pop().unwrap();
+            Some(decode_importsec(&section)?)
+        }
+        _ => None,
+    };
+
     let func_declarations = match sections.last() {
         Some(section) if section.id == SectionId::Function => {
             let section = sections.pop().unwrap();
@@ -1003,6 +1040,7 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
 
     Ok(Module::new(
         types.unwrap_or_default(),
+        imports.unwrap_or_default(),
         funcs.unwrap_or_default(),
         tables.unwrap_or_default(),
         mems.unwrap_or_default(),

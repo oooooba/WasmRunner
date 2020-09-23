@@ -6,6 +6,7 @@ use crate::types::*;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Module {
     types: Vec<Functype>,
+    imports: Vec<Import>,
     funcs: Vec<Func>,
     tables: Vec<Table>,
     mems: Vec<Mem>,
@@ -19,6 +20,7 @@ pub struct Module {
 impl Module {
     pub fn new(
         types: Vec<Functype>,
+        imports: Vec<Import>,
         funcs: Vec<Func>,
         tables: Vec<Table>,
         mems: Vec<Mem>,
@@ -30,6 +32,7 @@ impl Module {
     ) -> Self {
         Self {
             types,
+            imports,
             funcs,
             tables,
             mems,
@@ -101,6 +104,27 @@ generate_idx!(Typeidx);
 generate_idx!(Memidx);
 generate_idx!(Globalidx);
 generate_idx!(Labelidx);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Import {
+    module: Name,
+    name: Name,
+    desc: Importdesc,
+}
+
+impl Import {
+    pub fn new(module: Name, name: Name, desc: Importdesc) -> Self {
+        Self { module, name, desc }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Importdesc {
+    Func(Typeidx),
+    Table(Tabletype),
+    Mem(Memtype),
+    Global(Globaltype),
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct FuncInner {
