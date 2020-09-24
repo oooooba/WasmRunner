@@ -171,6 +171,7 @@ fn run_test(module_file_name: &str) {
                     "out of bounds memory access" => ExecutionError::OutOfBoundsMemoryAccess,
                     "undefined element" => ExecutionError::UndefinedElement,
                     "indirect call type mismatch" => ExecutionError::IndirectCallTypeMismatch,
+                    "invalid conversion to integer" => ExecutionError::InvalidConversionToInteger,
                     _ => unimplemented!(),
                 };
 
