@@ -10,14 +10,16 @@ use std::env;
 use std::fs;
 
 use decoder::Decoder;
-use executor::{instantiate, invoke, ExecutionError};
+use executor::{instantiate, invoke, Context, ExecutionError};
+use instance::Moduleinst;
 use module::Name;
 use value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
 // test
 use wast::parser::{self, ParseBuffer};
 use wast::{
-    AssertExpression, Instruction, NanPattern, Wast, WastDirective, WastExecute, WastInvoke,
+    AssertExpression, Expression, Instruction, NanPattern, Wast, WastDirective, WastExecute,
+    WastInvoke,
 };
 
 fn main() {
@@ -31,6 +33,37 @@ fn main() {
     run_test(&format!("{}/i32.wast", base_dir_path));
     run_test(&format!("{}/i64.wast", base_dir_path));
     run_test(&format!("{}/int_literals.wast", base_dir_path));
+}
+
+fn run_invoke_ation<'a>(
+    ctx: &mut Context,
+    moduleinst: &Moduleinst,
+    name: &'a str,
+    args: Vec<Expression<'a>>,
+) -> Result<WasmRunnerResult, ExecutionError> {
+    let arguments = args
+        .into_iter()
+        .map(|arg| {
+            assert_eq!(arg.instrs.len(), 1);
+            use Instruction::*;
+            let value_kind = match arg.instrs[0] {
+                I32Const(x) => ValueKind::I32(x as u32),
+                I64Const(x) => ValueKind::I64(x as u64),
+                F32Const(ref x) => {
+                    ValueKind::F32(F32Bytes::new(f32::from_le_bytes(x.bits.to_le_bytes())))
+                }
+                F64Const(ref x) => {
+                    ValueKind::F64(F64Bytes::new(f64::from_le_bytes(x.bits.to_le_bytes())))
+                }
+                _ => unimplemented!(),
+            };
+            Value::new(value_kind)
+        })
+        .collect::<Vec<Value>>();
+    let funcaddr = moduleinst
+        .find_funcaddr(&Name::new(name.to_string()))
+        .unwrap();
+    invoke(ctx, funcaddr, arguments)
 }
 
 fn run_test(module_file_name: &str) {
@@ -52,6 +85,11 @@ fn run_test(module_file_name: &str) {
                 current_module = Some(module);
                 current_moduleinst = Some(moduleinst);
                 current_context = Some(ctx);
+            }
+            Invoke(WastInvoke { name, args, .. }) => {
+                let ctx = current_context.as_mut().unwrap();
+                let moduleinst = current_moduleinst.as_ref().unwrap();
+                run_invoke_ation(ctx, moduleinst, name, args).unwrap();
             }
             AssertReturn { exec, results, .. } => {
                 let (func_name, arguments) = match exec {
