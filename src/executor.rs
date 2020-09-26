@@ -381,7 +381,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                         -0.0
                     } else {
                         let n = f.round();
-                        if (f - n).abs() == 0.5 && (n as i128).rem_euclid(2) == 1 {
+                        if (f - n).abs() == 0.5 && n.rem_euclid(2.0) == 1.0 {
                             if n > 0.0 {
                                 n - 1.0
                             } else {
@@ -413,7 +413,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                         -0.0
                     } else {
                         let n = f.round();
-                        if (f - n).abs() == 0.5 && (n as i128).rem_euclid(2) == 1 {
+                        if (f - n).abs() == 0.5 && n.rem_euclid(2.0) == 1.0 {
                             if n > 0.0 {
                                 n - 1.0
                             } else {
