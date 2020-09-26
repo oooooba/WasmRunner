@@ -380,7 +380,16 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     } else if -0.5 <= f && f < 0.0 {
                         -0.0
                     } else {
-                        f.round()
+                        let n = f.round();
+                        if (f - n).abs() == 0.5 && (n as i128).rem_euclid(2) == 1 {
+                            if n > 0.0 {
+                                n - 1.0
+                            } else {
+                                n + 1.0
+                            }
+                        } else {
+                            n
+                        }
                     }
                 }
                 FUnopKind::Sqrt => c.to_f32().sqrt(),
@@ -403,7 +412,16 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     } else if -0.5 <= f && f < 0.0 {
                         -0.0
                     } else {
-                        f.round()
+                        let n = f.round();
+                        if (f - n).abs() == 0.5 && (n as i128).rem_euclid(2) == 1 {
+                            if n > 0.0 {
+                                n - 1.0
+                            } else {
+                                n + 1.0
+                            }
+                        } else {
+                            n
+                        }
                     }
                 }
                 FUnopKind::Sqrt => c.to_f64().sqrt(),
