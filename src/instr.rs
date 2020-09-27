@@ -227,7 +227,7 @@ pub enum InstrKind {
     StoreI64(Option<StoreI64Opt>, Memarg),
     StoreF32(Memarg),
     StoreF64(Memarg),
-    Grow,
+    MemoryGrow,
 
     Nop,
     Unreachable,

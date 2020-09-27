@@ -381,7 +381,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
             if b != 0 {
                 unimplemented!() // @todo raise Error
             }
-            Ok(Instr::new(Grow))
+            Ok(Instr::new(MemoryGrow))
         }
 
         0x41 => Ok(Instr::new(ConstI32(decode_s32(reader)? as u32))),
