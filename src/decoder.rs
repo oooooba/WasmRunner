@@ -545,7 +545,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
             Ok(Instr::new(Cvtop(trunc_sat_kinds[prefix])))
         }
 
-        _ => panic!("unhandled opcode: {}", b),
+        _ => panic!("unhandled opcode: 0x{:>02X}", b),
     }
 }
 
