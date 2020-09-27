@@ -475,7 +475,7 @@ impl Meminst {
                 return Ok(None);
             }
         }
-        for _ in 0..(PAGE_SIZE * len) {
+        for _ in 0..(PAGE_SIZE * page_size) {
             self.data.push(0);
         }
         Ok(Some(sz as u32))
