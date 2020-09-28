@@ -376,6 +376,13 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
             Some(StoreI64Opt::L32),
             decode_memarg(reader)?,
         ))),
+        0x3F => {
+            let b = decode_byte(reader)?;
+            if b != 0 {
+                unimplemented!() // @todo raise Error
+            }
+            Ok(Instr::new(MemorySize))
+        }
         0x40 => {
             let b = decode_byte(reader)?;
             if b != 0 {

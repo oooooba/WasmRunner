@@ -353,6 +353,12 @@ impl Meminst {
         self.data.len()
     }
 
+    pub fn size_in_page(&self) -> usize {
+        let len = self.data.len();
+        assert!(len % PAGE_SIZE == 0);
+        len / PAGE_SIZE
+    }
+
     fn read_n(&self, buf: &mut [u8], buflen: usize, index: usize) -> Result<(), ExecutionError> {
         if index + buflen > self.data.len() {
             return Err(ExecutionError::OutOfBoundsMemoryAccess);

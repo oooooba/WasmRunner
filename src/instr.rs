@@ -228,6 +228,7 @@ pub enum InstrKind {
     StoreF32(Memarg),
     StoreF64(Memarg),
     MemoryGrow,
+    MemorySize,
 
     Nop,
     Unreachable,

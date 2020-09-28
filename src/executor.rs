@@ -1197,6 +1197,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
             meminst.write_f64(ea, v).map(|_| Fallthrough)
         }
+        MemorySize => {
+            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
+            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            let result = meminst.size_in_page();
+            assert!(result <= (u32::MAX as usize));
+            ctx.stack_mut().push_i32(result as u32).map(|_| Fallthrough)
+        }
         MemoryGrow => {
             let n = ctx.stack_mut().pop_i32()? as usize;
             let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
