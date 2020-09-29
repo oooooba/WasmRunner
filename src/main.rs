@@ -81,7 +81,8 @@ fn run_test(module_file_name: &str) {
                 let mut reader = &module.encode().unwrap()[..];
                 let mut decoder = Decoder::new(&mut reader);
                 let module = decoder.run().expect("should success");
-                let (moduleinst, ctx) = instantiate(&module).unwrap();
+                let mut ctx = Context::new();
+                let moduleinst = instantiate(&mut ctx, &module).unwrap();
                 current_module = Some(module);
                 current_moduleinst = Some(moduleinst);
                 current_context = Some(ctx);
@@ -223,8 +224,9 @@ fn run_test(module_file_name: &str) {
                 assert_eq!(res, expected_trap);
 
                 // recreate module instance and context
-                let (new_moduleinst, new_context) =
-                    instantiate(current_module.as_ref().unwrap()).unwrap();
+                let mut new_context = Context::new();
+                let new_moduleinst =
+                    instantiate(&mut new_context, current_module.as_ref().unwrap()).unwrap();
                 current_moduleinst = Some(new_moduleinst);
                 current_context = Some(new_context);
             }

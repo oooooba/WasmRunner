@@ -1358,12 +1358,10 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
     Ok(Control::Branch(labelidx.to_usize()))
 }
 
-pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionError> {
-    let mut ctx = Context::new();
-
+pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
     let mut initial_global_values = Vec::new();
     for global in module.globals() {
-        let value = eval(&mut ctx, global.init())?;
+        let value = eval(ctx, global.init())?;
         initial_global_values.push(value);
     }
 
@@ -1371,7 +1369,7 @@ pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionEr
 
     for elem in module.elems() {
         // @todo push Frame
-        let eoval = eval(&mut ctx, elem.offset())?;
+        let eoval = eval(ctx, elem.offset())?;
         // @todo pop Frame
         let eo = match eoval.kind() {
             ValueKind::I32(n) => n as usize,
@@ -1394,7 +1392,7 @@ pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionEr
     }
 
     for datum in module.data() {
-        let doval = eval(&mut ctx, datum.offset())?;
+        let doval = eval(ctx, datum.offset())?;
         let dofst = match doval.kind() {
             ValueKind::I32(n) => n as usize,
             _ => unimplemented!(), // @todo raise Error
@@ -1414,7 +1412,7 @@ pub fn instantiate(module: &Module) -> Result<(Moduleinst, Context), ExecutionEr
         }
     }
 
-    Ok((moduleinst, ctx))
+    Ok(moduleinst)
 }
 
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
