@@ -71,7 +71,6 @@ fn run_test(module_file_name: &str) {
     let wast_text = fs::read_to_string(module_file_name).unwrap();
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
-    let mut current_module = None;
     let mut current_moduleinst = None;
     let mut current_context = None;
     for directive in wast_ast.directives {
@@ -83,7 +82,6 @@ fn run_test(module_file_name: &str) {
                 let module = decoder.run().expect("should success");
                 let mut ctx = Context::new();
                 let moduleinst = instantiate(&mut ctx, &module).unwrap();
-                current_module = Some(module);
                 current_moduleinst = Some(moduleinst);
                 current_context = Some(ctx);
             }
@@ -222,13 +220,7 @@ fn run_test(module_file_name: &str) {
                 let res = invoke(ctx, funcaddr, arguments).unwrap_err();
                 println!("{}: trap = {:?}", func_name, res);
                 assert_eq!(res, expected_trap);
-
-                // recreate module instance and context
-                let mut new_context = Context::new();
-                let new_moduleinst =
-                    instantiate(&mut new_context, current_module.as_ref().unwrap()).unwrap();
-                current_moduleinst = Some(new_moduleinst);
-                current_context = Some(new_context);
+                ctx.reset();
             }
             _ => (),
         }

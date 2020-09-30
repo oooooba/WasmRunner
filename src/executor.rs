@@ -310,6 +310,12 @@ impl Context {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.stack = Stack::new();
+        let unused_frame = Frame::new(Vec::new(), 0, None);
+        self.current_frame = unused_frame;
+    }
+
     pub fn stack(&self) -> &Stack {
         &self.stack
     }
