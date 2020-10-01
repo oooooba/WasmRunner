@@ -1445,7 +1445,7 @@ fn execute_instr_seq(
         args.push(arg);
     }
     ctx.stack_mut().push_label(label)?;
-    for arg in args {
+    while let Some(arg) = args.pop() {
         ctx.stack_mut().push_value(arg)?;
     }
 
