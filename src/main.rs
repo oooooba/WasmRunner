@@ -209,6 +209,7 @@ fn run_test(module_file_name: &str) {
                     "undefined element" => ExecutionError::UndefinedElement,
                     "indirect call type mismatch" => ExecutionError::IndirectCallTypeMismatch,
                     "invalid conversion to integer" => ExecutionError::InvalidConversionToInteger,
+                    "unreachable" => ExecutionError::ExplicitTrap,
                     _ => unimplemented!(),
                 };
 
