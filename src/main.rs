@@ -92,27 +92,7 @@ fn run_test(module_file_name: &str) {
             }
             AssertReturn { exec, results, .. } => {
                 let (func_name, arguments) = match exec {
-                    WastExecute::Invoke(WastInvoke { name, args, .. }) => (
-                        name,
-                        args.into_iter()
-                            .map(|arg| {
-                                assert_eq!(arg.instrs.len(), 1);
-                                use Instruction::*;
-                                let value_kind = match arg.instrs[0] {
-                                    I32Const(x) => ValueKind::I32(x as u32),
-                                    I64Const(x) => ValueKind::I64(x as u64),
-                                    F32Const(ref x) => ValueKind::F32(F32Bytes::new(
-                                        f32::from_le_bytes(x.bits.to_le_bytes()),
-                                    )),
-                                    F64Const(ref x) => ValueKind::F64(F64Bytes::new(
-                                        f64::from_le_bytes(x.bits.to_le_bytes()),
-                                    )),
-                                    _ => unimplemented!(),
-                                };
-                                Value::new(value_kind)
-                            })
-                            .collect::<Vec<Value>>(),
-                    ),
+                    WastExecute::Invoke(WastInvoke { name, args, .. }) => (name, args),
                     _ => unimplemented!(),
                 };
                 let (expected_result, should_replace_nan): (Vec<Value>, Vec<bool>) = results
@@ -155,10 +135,8 @@ fn run_test(module_file_name: &str) {
 
                 let moduleinst = current_moduleinst.as_ref().unwrap();
                 let ctx = current_context.as_mut().unwrap();
-                let funcaddr = moduleinst
-                    .find_funcaddr(&Name::new(func_name.to_string()))
-                    .unwrap();
-                let WasmRunnerResult::Values(res) = invoke(ctx, funcaddr, arguments).unwrap();
+                let WasmRunnerResult::Values(res) =
+                    run_invoke_ation(ctx, moduleinst, func_name, arguments).unwrap();
                 let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
                     res.iter()
                         .map(|v| match v.kind() {
