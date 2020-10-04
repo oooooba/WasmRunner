@@ -4,6 +4,7 @@ mod instance;
 mod instr;
 mod module;
 mod types;
+mod validator;
 mod value;
 
 use std::env;
@@ -13,6 +14,7 @@ use decoder::Decoder;
 use executor::{instantiate, invoke, Context, ExecutionError};
 use instance::Moduleinst;
 use module::Name;
+use validator::validate;
 use value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
 // test

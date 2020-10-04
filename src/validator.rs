@@ -1,0 +1,223 @@
+use crate::instr::*;
+use crate::module::*;
+use crate::types::*;
+
+struct TypeContext {
+    types: Vec<Functype>,
+    funcs: Vec<Functype>,
+    mems: Vec<Memtype>,
+    locals: Vec<Valtype>,
+    labels: Vec<Resulttype>,
+    return_type: Option<Resulttype>,
+}
+
+impl TypeContext {
+    fn new() -> Self {
+        Self {
+            types: Vec::new(),
+            funcs: Vec::new(),
+            mems: Vec::new(),
+            locals: Vec::new(),
+            labels: Vec::new(),
+            return_type: None,
+        }
+    }
+
+    fn validate_limit(&self, limit: &Limit, k: usize) -> Result<(), ValidationError> {
+        let n = limit.min() as usize;
+        if n > k {
+            return Err(ValidationError::Limit(format!(
+                "min value ({}) must be less or equal to {}",
+                n, k
+            )));
+        }
+        if let Some(m) = limit.max().map(|m| m as usize) {
+            if m > k {
+                return Err(ValidationError::Limit(format!(
+                    "max value ({}) must be less or equal to {}",
+                    m, k
+                )));
+            }
+            if n > m {
+                return Err(ValidationError::Limit(format!(
+                    "min value ({}) must be less or equal to max value ({})",
+                    n, m
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_functype(&self, _functype: &Functype) -> Result<(), ValidationError> {
+        Ok(())
+    }
+
+    fn validate_instr(
+        &mut self,
+        instr: &Instr,
+        type_stack: &mut Vec<Valtype>,
+    ) -> Result<(), ValidationError> {
+        use InstrKind::*;
+        use Valtype::*;
+        let len = type_stack.len();
+        match &instr.kind {
+            ConstI32(_) => type_stack.push(I32),
+            ConstI64(_) => type_stack.push(I64),
+            ConstF32(_) => type_stack.push(F32),
+            ConstF64(_) => type_stack.push(F64),
+
+            UnopI32(_) if type_stack.last() == Some(&I32) => (),
+            UnopI64(_) if type_stack.last() == Some(&I64) => (),
+            UnopF32(_) if type_stack.last() == Some(&F32) => (),
+            UnopF64(_) if type_stack.last() == Some(&F64) => (),
+
+            Extend(kind) => match kind {
+                ExtendKind::I32As8S if type_stack.last() == Some(&I32) => (),
+                ExtendKind::I32As16S if type_stack.last() == Some(&I32) => (),
+                ExtendKind::I64As8S if type_stack.last() == Some(&I64) => (),
+                ExtendKind::I64As16S if type_stack.last() == Some(&I64) => (),
+                ExtendKind::I64As32S if type_stack.last() == Some(&I64) => (),
+                _ => unimplemented!(), // @todo
+            },
+
+            BinopI32(_) if len >= 2 && type_stack[len - 1] == I32 && type_stack[len - 2] == I32 => {
+                type_stack.pop();
+            }
+            BinopI64(_) if len >= 2 && type_stack[len - 1] == I64 && type_stack[len - 2] == I64 => {
+                type_stack.pop();
+            }
+            BinopF32(_) if len >= 2 && type_stack[len - 1] == F32 && type_stack[len - 2] == F32 => {
+                type_stack.pop();
+            }
+            BinopF64(_) if len >= 2 && type_stack[len - 1] == F64 && type_stack[len - 2] == F64 => {
+                type_stack.pop();
+            }
+
+            TestopI32(_) if type_stack.last() == Some(&I32) => {
+                type_stack.pop();
+                type_stack.push(I32);
+            }
+            TestopI64(_) if type_stack.last() == Some(&I64) => {
+                type_stack.pop();
+                type_stack.push(I64);
+            }
+
+            RelopI32(_) if len >= 2 && type_stack[len - 1] == I32 && type_stack[len - 2] == I32 => {
+                type_stack.pop();
+                type_stack.pop();
+                type_stack.push(I32);
+            }
+            RelopI64(_) if len >= 2 && type_stack[len - 1] == I64 && type_stack[len - 2] == I64 => {
+                type_stack.pop();
+                type_stack.pop();
+                type_stack.push(I32);
+            }
+            RelopF32(_) if len >= 2 && type_stack[len - 1] == F32 && type_stack[len - 2] == F32 => {
+                type_stack.pop();
+                type_stack.pop();
+                type_stack.push(I32);
+            }
+            RelopF64(_) if len >= 2 && type_stack[len - 1] == F64 && type_stack[len - 2] == F64 => {
+                type_stack.pop();
+                type_stack.pop();
+                type_stack.push(I32);
+            }
+
+            _ => unimplemented!(),
+        }
+        Ok(())
+    }
+
+    fn validate_expr(
+        &mut self,
+        expr: &Expr,
+        resulttype: &Resulttype,
+    ) -> Result<(), ValidationError> {
+        let mut type_stack: Vec<Valtype> = Vec::new();
+        for instr in expr.instr_seq().instr_seq().iter() {
+            self.validate_instr(instr, &mut type_stack)?;
+        }
+        let resulttype: Vec<Valtype> = resulttype.iter().map(|t| t.clone()).collect();
+        if type_stack == resulttype {
+            Ok(())
+        } else {
+            unimplemented!()
+        }
+    }
+
+    fn validate_func(&mut self, func: &Func) -> Result<(), ValidationError> {
+        let typ = self.types[func.typ().to_usize()].make_clone();
+        self.validate_functype(&typ)?;
+
+        self.locals = typ.param_type().to_vec();
+        self.locals.append(&mut func.locals().clone());
+        self.labels = vec![typ.return_type().clone()];
+        self.return_type = Some(typ.return_type().clone());
+
+        self.validate_expr(func.body(), typ.return_type())?;
+
+        self.locals = Vec::new();
+        self.labels = Vec::new();
+        self.return_type = None;
+
+        Ok(())
+    }
+
+    fn validate_memtype(&self, memtype: &Memtype) -> Result<(), ValidationError> {
+        self.validate_limit(memtype.limit(), 2usize.pow(16))
+    }
+
+    fn validate_mem(&self, mem: &Mem) -> Result<(), ValidationError> {
+        self.validate_memtype(mem.typ())
+    }
+
+    fn validate_module(&mut self, module: &Module) -> Result<(), ValidationError> {
+        let types = module
+            .types()
+            .iter()
+            .map(|functype| functype.make_clone())
+            .collect();
+        let funcs = module
+            .funcs()
+            .iter()
+            .map(|func| module.types()[func.typ().to_usize()].make_clone())
+            .collect();
+        let mems: Vec<Memtype> = module.mems().iter().map(|mem| mem.typ().clone()).collect();
+
+        if mems.len() > 1 {
+            return Err(ValidationError::Module(format!(
+                "size of mems in module ({}) must be less or equal to 1",
+                mems.len()
+            )));
+        }
+
+        self.types = types;
+        self.funcs = funcs;
+        self.mems = mems;
+
+        for functype in module.types() {
+            self.validate_functype(functype)?;
+        }
+
+        for func in module.funcs() {
+            self.validate_func(func)?;
+        }
+
+        for mem in module.mems() {
+            self.validate_mem(mem)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ValidationError {
+    Limit(String),
+    Module(String),
+}
+
+pub fn validate(module: &Module) -> Result<(), ValidationError> {
+    let mut context = TypeContext::new();
+    context.validate_module(module)
+}
