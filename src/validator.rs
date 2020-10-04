@@ -258,6 +258,20 @@ impl TypeContext {
                 _ => unimplemented!(), // @todo
             },
 
+            Drop if len >= 1 => {
+                type_stack.pop();
+            }
+            Select
+                if len >= 3
+                    && type_stack[len - 1] == I32
+                    && type_stack[len - 2] == type_stack[len - 3] =>
+            {
+                type_stack.pop();
+                let t = type_stack.pop().unwrap();
+                type_stack.pop();
+                type_stack.push(t);
+            }
+
             _ => unimplemented!(),
         }
         Ok(())
