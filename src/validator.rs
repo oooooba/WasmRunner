@@ -122,6 +122,141 @@ impl TypeContext {
                 type_stack.pop();
                 type_stack.push(I32);
             }
+            Cvtop(ref op) => match op {
+                CvtopKind::I32WrapI64 if type_stack.last() == Some(&I64) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I64ExtendI32S if type_stack.last() == Some(&I32) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I64ExtendI32U if type_stack.last() == Some(&I32) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I32TruncF32S if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I32TruncF32U if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I32TruncF64S if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I32TruncF64U if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I64TruncF32S if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I64TruncF32U if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I64TruncF64S if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I64TruncF64U if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I32TruncSatF32S if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I32TruncSatF32U if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I32TruncSatF64S if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I32TruncSatF64U if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I64TruncSatF32S if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I64TruncSatF32U if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I64TruncSatF64S if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::I64TruncSatF64U if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::F32ConvertI32S if type_stack.last() == Some(&I32) => {
+                    type_stack.pop();
+                    type_stack.push(F32);
+                }
+                CvtopKind::F32ConvertI32U if type_stack.last() == Some(&I32) => {
+                    type_stack.pop();
+                    type_stack.push(F32);
+                }
+                CvtopKind::F32ConvertI64S if type_stack.last() == Some(&I64) => {
+                    type_stack.pop();
+                    type_stack.push(F32);
+                }
+                CvtopKind::F32ConvertI64U if type_stack.last() == Some(&I64) => {
+                    type_stack.pop();
+                    type_stack.push(F32);
+                }
+                CvtopKind::F64ConvertI32S if type_stack.last() == Some(&I32) => {
+                    type_stack.pop();
+                    type_stack.push(F64);
+                }
+                CvtopKind::F64ConvertI32U if type_stack.last() == Some(&I32) => {
+                    type_stack.pop();
+                    type_stack.push(F64);
+                }
+                CvtopKind::F64ConvertI64S if type_stack.last() == Some(&I64) => {
+                    type_stack.pop();
+                    type_stack.push(F64);
+                }
+                CvtopKind::F64ConvertI64U if type_stack.last() == Some(&I64) => {
+                    type_stack.pop();
+                    type_stack.push(F64);
+                }
+                CvtopKind::F32DemoteF64 if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(F32);
+                }
+                CvtopKind::F64PromoteF32 if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(F64);
+                }
+                CvtopKind::I32ReinterpretF32 if type_stack.last() == Some(&F32) => {
+                    type_stack.pop();
+                    type_stack.push(I32);
+                }
+                CvtopKind::I64ReinterpretF64 if type_stack.last() == Some(&F64) => {
+                    type_stack.pop();
+                    type_stack.push(I64);
+                }
+                CvtopKind::F32ReinterpretI32 if type_stack.last() == Some(&I32) => {
+                    type_stack.pop();
+                    type_stack.push(F32);
+                }
+                CvtopKind::F64ReinterpretI64 if type_stack.last() == Some(&I64) => {
+                    type_stack.pop();
+                    type_stack.push(F64);
+                }
+                _ => unimplemented!(), // @todo
+            },
 
             _ => unimplemented!(),
         }
