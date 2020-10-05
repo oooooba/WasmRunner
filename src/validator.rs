@@ -272,6 +272,23 @@ impl TypeContext {
                 type_stack.push(t);
             }
 
+            GetLocal(idx) if idx.to_usize() < self.locals.len() => {
+                let t = self.locals[idx.to_usize()].clone();
+                type_stack.push(t);
+            }
+            SetLocal(idx)
+                if idx.to_usize() < self.locals.len()
+                    && type_stack.last() == Some(&self.locals[idx.to_usize()]) =>
+            {
+                type_stack.pop();
+            }
+            TeeLocal(idx)
+                if idx.to_usize() < self.locals.len()
+                    && type_stack.last() == Some(&self.locals[idx.to_usize()]) =>
+            {
+                ()
+            }
+
             _ => unimplemented!(),
         }
         Ok(())
