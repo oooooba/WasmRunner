@@ -123,6 +123,10 @@ impl Globaltype {
         Self { typ, mutability }
     }
 
+    pub fn typ(&self) -> &Valtype {
+        &self.typ
+    }
+
     pub fn mutability(&self) -> &Mutability {
         &self.mutability
     }

@@ -6,6 +6,7 @@ struct TypeContext {
     types: Vec<Functype>,
     funcs: Vec<Functype>,
     mems: Vec<Memtype>,
+    globals: Vec<Globaltype>,
     locals: Vec<Valtype>,
     labels: Vec<Resulttype>,
     return_type: Option<Resulttype>,
@@ -17,6 +18,7 @@ impl TypeContext {
             types: Vec::new(),
             funcs: Vec::new(),
             mems: Vec::new(),
+            globals: Vec::new(),
             locals: Vec::new(),
             labels: Vec::new(),
             return_type: None,
@@ -287,6 +289,17 @@ impl TypeContext {
                     && type_stack.last() == Some(&self.locals[idx.to_usize()]) =>
             {
                 ()
+            }
+            GetGlobal(idx) if idx.to_usize() < self.globals.len() => {
+                let t = self.globals[idx.to_usize()].typ().clone();
+                type_stack.push(t);
+            }
+            SetGlobal(idx)
+                if idx.to_usize() < self.globals.len()
+                    && type_stack.last() == Some(self.globals[idx.to_usize()].typ())
+                    && self.globals[idx.to_usize()].mutability() == &Mutability::Var =>
+            {
+                type_stack.pop();
             }
 
             _ => unimplemented!(),
