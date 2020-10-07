@@ -302,8 +302,111 @@ impl TypeContext {
                 type_stack.pop();
             }
 
+            LoadI32(opt, memarg) => {
+                let bit_width = match opt {
+                    None => 32,
+                    Some(LoadI32Opt::S8) => 8,
+                    Some(LoadI32Opt::U8) => 8,
+                    Some(LoadI32Opt::S16) => 16,
+                    Some(LoadI32Opt::U16) => 16,
+                };
+                self.validate_instr_helper_load(memarg, bit_width, I32, type_stack)?;
+            }
+            LoadI64(opt, memarg) => {
+                let bit_width = match opt {
+                    None => 64,
+                    Some(LoadI64Opt::S8) => 8,
+                    Some(LoadI64Opt::U8) => 8,
+                    Some(LoadI64Opt::S16) => 16,
+                    Some(LoadI64Opt::U16) => 16,
+                    Some(LoadI64Opt::S32) => 32,
+                    Some(LoadI64Opt::U32) => 32,
+                };
+                self.validate_instr_helper_load(memarg, bit_width, I64, type_stack)?;
+            }
+            LoadF32(memarg) => {
+                self.validate_instr_helper_load(memarg, 32, F32, type_stack)?;
+            }
+            LoadF64(memarg) => {
+                self.validate_instr_helper_load(memarg, 64, F64, type_stack)?;
+            }
+            StoreI32(opt, memarg) => {
+                let bit_width = match opt {
+                    None => 32,
+                    Some(StoreI32Opt::L8) => 8,
+                    Some(StoreI32Opt::L16) => 16,
+                };
+                self.validate_instr_helper_store(memarg, bit_width, I32, type_stack)?;
+            }
+            StoreI64(opt, memarg) => {
+                let bit_width = match opt {
+                    None => 64,
+                    Some(StoreI64Opt::L8) => 8,
+                    Some(StoreI64Opt::L16) => 16,
+                    Some(StoreI64Opt::L32) => 32,
+                };
+                self.validate_instr_helper_store(memarg, bit_width, I64, type_stack)?;
+            }
+            StoreF32(memarg) => {
+                self.validate_instr_helper_store(memarg, 32, F32, type_stack)?;
+            }
+            StoreF64(memarg) => {
+                self.validate_instr_helper_store(memarg, 64, F64, type_stack)?;
+            }
+
             _ => unimplemented!(),
         }
+        Ok(())
+    }
+
+    fn validate_instr_helper_load(
+        &self,
+        memarg: &Memarg,
+        bit_width: u32,
+        valtype: Valtype,
+        type_stack: &mut Vec<Valtype>,
+    ) -> Result<(), ValidationError> {
+        if type_stack.last() != Some(&Valtype::I32) {
+            unimplemented!() // @todo
+        }
+        if self.mems.len() < 1 {
+            unimplemented!() // @todo
+        }
+        self.validate_memtype(&self.mems[0])?;
+        if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
+            unimplemented!() // @todo
+        }
+        type_stack.pop();
+        type_stack.push(valtype);
+        Ok(())
+    }
+
+    fn validate_instr_helper_store(
+        &self,
+        memarg: &Memarg,
+        bit_width: u32,
+        valtype: Valtype,
+        type_stack: &mut Vec<Valtype>,
+    ) -> Result<(), ValidationError> {
+        let len = type_stack.len();
+        if len < 2 {
+            unimplemented!() // @todo
+        }
+        if type_stack[len - 2] != Valtype::I32 {
+            unimplemented!() // @todo
+        }
+        if type_stack[len - 1] != valtype {
+            unimplemented!() // @todo
+        }
+        if self.mems.len() < 1 {
+            unimplemented!() // @todo
+        }
+        self.validate_memtype(&self.mems[0])?;
+        if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
+            unimplemented!() // @todo
+        }
+        type_stack.pop();
+        type_stack.pop();
         Ok(())
     }
 

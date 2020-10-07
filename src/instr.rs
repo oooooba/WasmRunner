@@ -179,6 +179,10 @@ impl Memarg {
     pub fn offset(&self) -> u32 {
         self.offset
     }
+
+    pub fn align(&self) -> u32 {
+        self.align
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
