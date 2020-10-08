@@ -353,6 +353,22 @@ impl TypeContext {
             StoreF64(memarg) => {
                 self.validate_instr_helper_store(memarg, 64, F64, type_stack)?;
             }
+            MemoryGrow => {
+                if self.mems.len() < 1 {
+                    unimplemented!() // @todo
+                }
+                self.validate_memtype(&self.mems[0])?;
+                if type_stack.last() != Some(&I32) {
+                    unimplemented!() // @todo
+                }
+            }
+            MemorySize => {
+                if self.mems.len() < 1 {
+                    unimplemented!() // @todo
+                }
+                self.validate_memtype(&self.mems[0])?;
+                type_stack.push(I32);
+            }
 
             _ => unimplemented!(),
         }
