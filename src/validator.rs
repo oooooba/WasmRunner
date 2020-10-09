@@ -370,6 +370,8 @@ impl TypeContext {
                 type_stack.push(I32);
             }
 
+            Nop => (),
+            Unreachable => (),
             _ => unimplemented!(),
         }
         Ok(())
