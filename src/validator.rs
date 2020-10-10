@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::instr::*;
 use crate::module::*;
 use crate::types::*;
@@ -8,7 +10,7 @@ struct TypeContext {
     mems: Vec<Memtype>,
     globals: Vec<Globaltype>,
     locals: Vec<Valtype>,
-    labels: Vec<Resulttype>,
+    labels: VecDeque<Resulttype>,
     return_type: Option<Resulttype>,
 }
 
@@ -20,7 +22,7 @@ impl TypeContext {
             mems: Vec::new(),
             globals: Vec::new(),
             locals: Vec::new(),
-            labels: Vec::new(),
+            labels: VecDeque::new(),
             return_type: None,
         }
     }
@@ -401,9 +403,9 @@ impl TypeContext {
                         unimplemented!() // @todo
                     }
                 }
-                self.labels.push(functype.return_type().clone());
+                self.labels.push_front(functype.return_type().clone());
                 self.validate_instr_seq(instr_seq, functype.return_type(), type_stack)?;
-                self.labels.pop();
+                self.labels.pop_front();
             }
             BrTable(labelidxes, default_labelidx) => {
                 if default_labelidx.to_usize() >= self.labels.len() {
@@ -510,13 +512,14 @@ impl TypeContext {
 
         self.locals = typ.param_type().to_vec();
         self.locals.append(&mut func.locals().clone());
-        self.labels = vec![typ.return_type().clone()];
+        self.labels = VecDeque::new();
+        self.labels.push_back(typ.return_type().clone());
         self.return_type = Some(typ.return_type().clone());
 
         self.validate_expr(func.body(), typ.return_type())?;
 
         self.locals = Vec::new();
-        self.labels = Vec::new();
+        self.labels = VecDeque::new();
         self.return_type = None;
 
         Ok(())
