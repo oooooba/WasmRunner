@@ -122,7 +122,7 @@ impl TypeContext {
             }
             TestopI64(_) if type_stack.last() == Some(&I64) => {
                 type_stack.pop();
-                type_stack.push(I64);
+                type_stack.push(I32);
             }
 
             RelopI32(_) if len >= 2 && type_stack[len - 1] == I32 && type_stack[len - 2] == I32 => {
