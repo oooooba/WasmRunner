@@ -50,6 +50,25 @@ impl TypeContext {
         Ok(())
     }
 
+    fn validate_blocktype(&self, blocktype: &Blocktype) -> Result<Functype, ValidationError> {
+        use Blocktype::*;
+        match blocktype {
+            Empty => Ok(Functype::new(
+                Resulttype::new(vec![]),
+                Resulttype::new(vec![]),
+            )),
+            Valtype(valtype) => Ok(Functype::new(
+                Resulttype::new(vec![]),
+                Resulttype::new(vec![valtype.clone()]),
+            )),
+            S33(x) if x.to_usize() < self.types.len() => {
+                self.validate_functype(&self.types[x.to_usize()])?;
+                Ok(self.types[x.to_usize()].make_clone())
+            }
+            _ => unimplemented!(), // @todo
+        }
+    }
+
     fn validate_functype(&self, _functype: &Functype) -> Result<(), ValidationError> {
         Ok(())
     }
@@ -372,6 +391,21 @@ impl TypeContext {
 
             Nop => (),
             Unreachable => (),
+            Block(blocktype, instr_seq) => {
+                let functype = self.validate_blocktype(blocktype)?;
+                if functype.param_type().len() > len {
+                    unimplemented!() // @todo
+                }
+                for (i, t) in functype.param_type().iter().enumerate() {
+                    if t != &type_stack[len - i - 1] {
+                        unimplemented!() // @todo
+                    }
+                }
+                self.labels.push(functype.return_type().clone());
+                self.validate_instr_seq(instr_seq, functype.return_type(), type_stack)?;
+                self.labels.pop();
+            }
+
             _ => unimplemented!(),
         }
         Ok(())
@@ -428,21 +462,31 @@ impl TypeContext {
         Ok(())
     }
 
+    fn validate_instr_seq(
+        &mut self,
+        instr_seq: &InstrSeq,
+        resulttype: &Resulttype,
+        type_stack: &mut Vec<Valtype>,
+    ) -> Result<(), ValidationError> {
+        for instr in instr_seq.instr_seq().iter() {
+            self.validate_instr(instr, type_stack)?;
+        }
+        let resulttype: Vec<Valtype> = resulttype.iter().map(|t| t.clone()).collect();
+        if type_stack == &resulttype {
+            Ok(())
+        } else {
+            unimplemented!()
+        }
+    }
+
     fn validate_expr(
         &mut self,
         expr: &Expr,
         resulttype: &Resulttype,
     ) -> Result<(), ValidationError> {
         let mut type_stack: Vec<Valtype> = Vec::new();
-        for instr in expr.instr_seq().instr_seq().iter() {
-            self.validate_instr(instr, &mut type_stack)?;
-        }
-        let resulttype: Vec<Valtype> = resulttype.iter().map(|t| t.clone()).collect();
-        if type_stack == resulttype {
-            Ok(())
-        } else {
-            unimplemented!()
-        }
+        self.validate_instr_seq(expr.instr_seq(), resulttype, &mut type_stack)?;
+        Ok(())
     }
 
     fn validate_func(&mut self, func: &Func) -> Result<(), ValidationError> {
