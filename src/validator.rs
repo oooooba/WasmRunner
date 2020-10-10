@@ -422,6 +422,17 @@ impl TypeContext {
                 }
                 type_stack.pop();
             }
+            Return => {
+                let return_type = self.return_type.as_ref().unwrap();
+                if len < return_type.len() {
+                    unimplemented!() // @todo
+                }
+                for (i, t) in return_type.iter().enumerate() {
+                    if t != &type_stack[len - i - 1] {
+                        unimplemented!() // @todo
+                    }
+                }
+            }
 
             _ => unimplemented!(),
         }
