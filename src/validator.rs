@@ -290,9 +290,7 @@ impl TypeContext {
                     && type_stack[len - 2] == type_stack[len - 3] =>
             {
                 type_stack.pop();
-                let t = type_stack.pop().unwrap();
                 type_stack.pop();
-                type_stack.push(t);
             }
 
             GetLocal(idx) if idx.to_usize() < self.locals.len() => {
