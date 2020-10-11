@@ -515,12 +515,17 @@ impl TypeContext {
         for instr in instr_seq.instr_seq().iter() {
             self.validate_instr(instr, type_stack)?;
         }
-        let resulttype: Vec<Valtype> = resulttype.iter().map(|t| t.clone()).collect();
-        if type_stack == &resulttype {
-            Ok(())
-        } else {
-            unimplemented!()
+        let len = type_stack.len();
+        let return_len = resulttype.len();
+        if len < return_len {
+            unimplemented!() // @todo
         }
+        for (i, t) in resulttype.iter().enumerate() {
+            if t != &type_stack[len - return_len + i] {
+                unimplemented!() // @todo
+            }
+        }
+        Ok(())
     }
 
     fn validate_expr(
@@ -530,6 +535,10 @@ impl TypeContext {
     ) -> Result<(), ValidationError> {
         let mut type_stack: Vec<Valtype> = Vec::new();
         self.validate_instr_seq(expr.instr_seq(), resulttype, &mut type_stack)?;
+        let resulttype: Vec<Valtype> = resulttype.iter().map(|t| t.clone()).collect();
+        if type_stack != resulttype {
+            unimplemented!() // @todo
+        }
         Ok(())
     }
 
