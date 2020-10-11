@@ -406,6 +406,22 @@ impl TypeContext {
                 self.validate_instr_seq(instr_seq, functype.return_type(), type_stack)?;
                 self.labels.pop_front();
             }
+            Br(labelidx) => {
+                let i = labelidx.to_usize();
+                if i >= self.labels.len() {
+                    unimplemented!() // @todo
+                }
+                let resulttype = &self.labels[i];
+                let result_len = resulttype.len();
+                if len < result_len {
+                    unimplemented!() // @todo
+                }
+                for (i, t) in resulttype.iter().enumerate() {
+                    if t != &type_stack[len - result_len + i] {
+                        unimplemented!() // @todo
+                    }
+                }
+            }
             BrTable(labelidxes, default_labelidx) => {
                 if default_labelidx.to_usize() >= self.labels.len() {
                     unimplemented!() // @todo
