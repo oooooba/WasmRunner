@@ -410,13 +410,26 @@ impl TypeContext {
                 if default_labelidx.to_usize() >= self.labels.len() {
                     unimplemented!() // @todo
                 }
+                let resulttype = &self.labels[default_labelidx.to_usize()];
                 for labelidx in labelidxes {
                     let i = labelidx.to_usize();
                     if i >= self.labels.len() {
-                        // @todo
+                        unimplemented!() // @todo
                     }
-                    if self.labels[i] != self.labels[default_labelidx.to_usize()] {
-                        // @todo
+                    if &self.labels[i] != resulttype {
+                        unimplemented!() // @todo
+                    }
+                }
+                let result_len = self.labels[default_labelidx.to_usize()].len();
+                if len < result_len + 1 {
+                    unimplemented!() // @todo
+                }
+                if type_stack[len - 1] != I32 {
+                    unimplemented!() // @todo
+                }
+                for (i, t) in resulttype.iter().enumerate() {
+                    if t != &type_stack[len - result_len - 1 + i] {
+                        unimplemented!() // @todo
                     }
                 }
                 type_stack.pop();
