@@ -393,11 +393,12 @@ impl TypeContext {
             Unreachable => (),
             Block(blocktype, instr_seq) => {
                 let functype = self.validate_blocktype(blocktype)?;
-                if functype.param_type().len() > len {
+                let param_len = functype.param_type().len();
+                if len < param_len {
                     unimplemented!() // @todo
                 }
                 for (i, t) in functype.param_type().iter().enumerate() {
-                    if t != &type_stack[len - i - 1] {
+                    if t != &type_stack[len - param_len + i] {
                         unimplemented!() // @todo
                     }
                 }
