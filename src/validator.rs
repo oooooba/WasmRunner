@@ -433,6 +433,24 @@ impl TypeContext {
                     }
                 }
             }
+            Call(funcidx) if funcidx.to_usize() < self.funcs.len() => {
+                let functype = &self.funcs[funcidx.to_usize()];
+                let param_len = functype.param_type().len();
+                if len < param_len {
+                    unimplemented!() // @todo
+                }
+                for (i, t) in functype.param_type().iter().enumerate() {
+                    if t != &type_stack[len - param_len + i] {
+                        unimplemented!() // @todo
+                    }
+                }
+                for _ in 0..param_len {
+                    type_stack.pop();
+                }
+                for t in functype.return_type().iter() {
+                    type_stack.push(t.clone());
+                }
+            }
 
             _ => unimplemented!(),
         }
