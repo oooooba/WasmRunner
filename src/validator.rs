@@ -420,7 +420,7 @@ impl TypeContext {
                         unimplemented!() // @todo
                     }
                 }
-                let result_len = self.labels[default_labelidx.to_usize()].len();
+                let result_len = resulttype.len();
                 if len < result_len + 1 {
                     unimplemented!() // @todo
                 }
