@@ -611,6 +611,11 @@ impl TypeContext {
             .map(|func| module.types()[func.typ().to_usize()].make_clone())
             .collect();
         let mems: Vec<Memtype> = module.mems().iter().map(|mem| mem.typ().clone()).collect();
+        let globals: Vec<Globaltype> = module
+            .globals()
+            .iter()
+            .map(|global| global.typ().clone())
+            .collect();
 
         if mems.len() > 1 {
             return Err(ValidationError::Module(format!(
@@ -622,6 +627,7 @@ impl TypeContext {
         self.types = types;
         self.funcs = funcs;
         self.mems = mems;
+        self.globals = globals;
 
         for functype in module.types() {
             self.validate_functype(functype)?;
