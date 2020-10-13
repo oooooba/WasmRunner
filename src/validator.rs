@@ -397,14 +397,23 @@ impl TypeContext {
                 if len < param_len {
                     unimplemented!() // @todo
                 }
+                let mut new_type_stack = Vec::new();
                 for (i, t) in functype.param_type().iter().enumerate() {
                     if t != &type_stack[len - param_len + i] {
                         unimplemented!() // @todo
                     }
+                    new_type_stack.push(t.clone());
                 }
                 self.labels.push_front(functype.return_type().clone());
-                self.validate_instr_seq(instr_seq, functype.return_type(), type_stack)?;
+                self.validate_instr_seq(instr_seq, functype.return_type(), &mut new_type_stack)?;
+                assert_eq!(new_type_stack.len(), functype.return_type().len());
                 self.labels.pop_front();
+                for _ in 0..functype.param_type().len() {
+                    type_stack.pop();
+                }
+                for t in functype.return_type().iter() {
+                    type_stack.push(t.clone());
+                }
             }
             Br(labelidx) => {
                 let i = labelidx.to_usize();
