@@ -4,6 +4,68 @@ use crate::instr::*;
 use crate::module::*;
 use crate::types::*;
 
+#[derive(Debug, PartialEq, Eq)]
+enum TypeStackEntry {
+    Type(Valtype),
+    AnyType,
+    Polymorphic,
+}
+
+struct TypeStack {
+    stack: Vec<TypeStackEntry>,
+}
+
+impl TypeStack {
+    fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+
+    fn produce(&mut self, entry: TypeStackEntry) {
+        use TypeStackEntry::*;
+        if entry == Polymorphic {
+            self.stack.clear();
+        }
+        self.stack.push(entry);
+    }
+
+    fn consume(&mut self, entry: TypeStackEntry) -> Result<TypeStackEntry, ValidationError> {
+        use TypeStackEntry::*;
+        match (self.stack.pop(), entry) {
+            (_, Polymorphic) => panic!(),
+
+            (Some(Type(valtype_s)), Type(valtype_e)) if valtype_s == valtype_e => {
+                Ok(Type(valtype_s))
+            }
+            (Some(Type(_)), Type(_)) => unimplemented!(), // @todo
+            (Some(Type(valtype_s)), AnyType) => Ok(Type(valtype_s)),
+
+            (Some(AnyType), Type(valtype_e)) => Ok(Type(valtype_e)),
+            (Some(AnyType), AnyType) => Ok(AnyType),
+
+            (Some(Polymorphic), Type(valtype_e)) => {
+                assert!(self.stack.is_empty());
+                self.stack.push(Polymorphic);
+                Ok(Type(valtype_e))
+            }
+            (Some(Polymorphic), AnyType) => {
+                assert!(self.stack.is_empty());
+                self.stack.push(Polymorphic);
+                Ok(AnyType)
+            }
+
+            (None, _) => unimplemented!(), // @todo
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        match self.stack.last() {
+            Some(TypeStackEntry::Polymorphic) => true,
+            None => true,
+            _ => false,
+        }
+    }
+}
+
 struct TypeContext {
     types: Vec<Functype>,
     funcs: Vec<Functype>,
@@ -78,247 +140,155 @@ impl TypeContext {
     fn validate_instr(
         &mut self,
         instr: &Instr,
-        type_stack: &mut Vec<Valtype>,
+        type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
         use InstrKind::*;
+        use TypeStackEntry::*;
         use Valtype::*;
-        let len = type_stack.len();
         match &instr.kind {
-            ConstI32(_) => type_stack.push(I32),
-            ConstI64(_) => type_stack.push(I64),
-            ConstF32(_) => type_stack.push(F32),
-            ConstF64(_) => type_stack.push(F64),
+            ConstI32(_) => type_stack.produce(Type(I32)),
+            ConstI64(_) => type_stack.produce(Type(I64)),
+            ConstF32(_) => type_stack.produce(Type(F32)),
+            ConstF64(_) => type_stack.produce(Type(F64)),
 
-            UnopI32(_) if type_stack.last() == Some(&I32) => (),
-            UnopI64(_) if type_stack.last() == Some(&I64) => (),
-            UnopF32(_) if type_stack.last() == Some(&F32) => (),
-            UnopF64(_) if type_stack.last() == Some(&F64) => (),
-
-            Extend(kind) => match kind {
-                ExtendKind::I32As8S if type_stack.last() == Some(&I32) => (),
-                ExtendKind::I32As16S if type_stack.last() == Some(&I32) => (),
-                ExtendKind::I64As8S if type_stack.last() == Some(&I64) => (),
-                ExtendKind::I64As16S if type_stack.last() == Some(&I64) => (),
-                ExtendKind::I64As32S if type_stack.last() == Some(&I64) => (),
-                _ => unimplemented!(), // @todo
-            },
-
-            BinopI32(_) if len >= 2 && type_stack[len - 1] == I32 && type_stack[len - 2] == I32 => {
-                type_stack.pop();
-            }
-            BinopI64(_) if len >= 2 && type_stack[len - 1] == I64 && type_stack[len - 2] == I64 => {
-                type_stack.pop();
-            }
-            BinopF32(_) if len >= 2 && type_stack[len - 1] == F32 && type_stack[len - 2] == F32 => {
-                type_stack.pop();
-            }
-            BinopF64(_) if len >= 2 && type_stack[len - 1] == F64 && type_stack[len - 2] == F64 => {
-                type_stack.pop();
+            UnopI32(_) => self.validate_instr_helper_single_op(I32, I32, type_stack)?,
+            UnopI64(_) => self.validate_instr_helper_single_op(I64, I64, type_stack)?,
+            UnopF32(_) => self.validate_instr_helper_single_op(F32, F32, type_stack)?,
+            UnopF64(_) => self.validate_instr_helper_single_op(F64, F64, type_stack)?,
+            Extend(kind) => {
+                use ExtendKind::*;
+                match kind {
+                    I32As8S => self.validate_instr_helper_single_op(I32, I32, type_stack)?,
+                    I32As16S => self.validate_instr_helper_single_op(I32, I32, type_stack)?,
+                    I64As8S => self.validate_instr_helper_single_op(I64, I64, type_stack)?,
+                    I64As16S => self.validate_instr_helper_single_op(I64, I64, type_stack)?,
+                    I64As32S => self.validate_instr_helper_single_op(I64, I64, type_stack)?,
+                }
             }
 
-            TestopI32(_) if type_stack.last() == Some(&I32) => {
-                type_stack.pop();
-                type_stack.push(I32);
-            }
-            TestopI64(_) if type_stack.last() == Some(&I64) => {
-                type_stack.pop();
-                type_stack.push(I32);
+            BinopI32(_) => self.validate_instr_helper_double_op(I32, I32, type_stack)?,
+            BinopI64(_) => self.validate_instr_helper_double_op(I64, I64, type_stack)?,
+            BinopF32(_) => self.validate_instr_helper_double_op(F32, F32, type_stack)?,
+            BinopF64(_) => self.validate_instr_helper_double_op(F64, F64, type_stack)?,
+
+            TestopI32(_) => self.validate_instr_helper_single_op(I32, I32, type_stack)?,
+            TestopI64(_) => self.validate_instr_helper_single_op(I32, I64, type_stack)?,
+
+            RelopI32(_) => self.validate_instr_helper_double_op(I32, I32, type_stack)?,
+            RelopI64(_) => self.validate_instr_helper_double_op(I32, I64, type_stack)?,
+            RelopF32(_) => self.validate_instr_helper_double_op(I32, F32, type_stack)?,
+            RelopF64(_) => self.validate_instr_helper_double_op(I32, F64, type_stack)?,
+
+            Cvtop(ref op) => {
+                use CvtopKind::*;
+                match op {
+                    I32WrapI64 => self.validate_instr_helper_single_op(I32, I64, type_stack)?,
+                    I64ExtendI32S => self.validate_instr_helper_single_op(I64, I32, type_stack)?,
+                    I64ExtendI32U => self.validate_instr_helper_single_op(I64, I32, type_stack)?,
+                    I32TruncF32S => self.validate_instr_helper_single_op(I32, F32, type_stack)?,
+                    I32TruncF32U => self.validate_instr_helper_single_op(I32, F32, type_stack)?,
+                    I32TruncF64S => self.validate_instr_helper_single_op(I32, F64, type_stack)?,
+                    I32TruncF64U => self.validate_instr_helper_single_op(I32, F64, type_stack)?,
+                    I64TruncF32S => self.validate_instr_helper_single_op(I64, F32, type_stack)?,
+                    I64TruncF32U => self.validate_instr_helper_single_op(I64, F32, type_stack)?,
+                    I64TruncF64S => self.validate_instr_helper_single_op(I64, F64, type_stack)?,
+                    I64TruncF64U => self.validate_instr_helper_single_op(I64, F64, type_stack)?,
+                    I32TruncSatF32S => {
+                        self.validate_instr_helper_single_op(I32, F32, type_stack)?
+                    }
+                    I32TruncSatF32U => {
+                        self.validate_instr_helper_single_op(I32, F32, type_stack)?
+                    }
+                    I32TruncSatF64S => {
+                        self.validate_instr_helper_single_op(I32, F64, type_stack)?
+                    }
+                    I32TruncSatF64U => {
+                        self.validate_instr_helper_single_op(I32, F64, type_stack)?
+                    }
+                    I64TruncSatF32S => {
+                        self.validate_instr_helper_single_op(I64, F32, type_stack)?
+                    }
+                    I64TruncSatF32U => {
+                        self.validate_instr_helper_single_op(I64, F32, type_stack)?
+                    }
+                    I64TruncSatF64S => {
+                        self.validate_instr_helper_single_op(I64, F64, type_stack)?
+                    }
+                    I64TruncSatF64U => {
+                        self.validate_instr_helper_single_op(I64, F64, type_stack)?
+                    }
+                    F32ConvertI32S => self.validate_instr_helper_single_op(F32, I32, type_stack)?,
+                    F32ConvertI32U => self.validate_instr_helper_single_op(F32, I32, type_stack)?,
+                    F32ConvertI64S => self.validate_instr_helper_single_op(F32, I64, type_stack)?,
+                    F32ConvertI64U => self.validate_instr_helper_single_op(F32, I64, type_stack)?,
+                    F64ConvertI32S => self.validate_instr_helper_single_op(F64, I32, type_stack)?,
+                    F64ConvertI32U => self.validate_instr_helper_single_op(F64, I32, type_stack)?,
+                    F64ConvertI64S => self.validate_instr_helper_single_op(F64, I64, type_stack)?,
+                    F64ConvertI64U => self.validate_instr_helper_single_op(F64, I64, type_stack)?,
+                    F32DemoteF64 => self.validate_instr_helper_single_op(F32, F64, type_stack)?,
+                    F64PromoteF32 => self.validate_instr_helper_single_op(F64, F32, type_stack)?,
+                    I32ReinterpretF32 => {
+                        self.validate_instr_helper_single_op(I32, F32, type_stack)?
+                    }
+                    I64ReinterpretF64 => {
+                        self.validate_instr_helper_single_op(I64, F64, type_stack)?
+                    }
+                    F32ReinterpretI32 => {
+                        self.validate_instr_helper_single_op(F32, I32, type_stack)?
+                    }
+                    F64ReinterpretI64 => {
+                        self.validate_instr_helper_single_op(F64, I64, type_stack)?
+                    }
+                }
             }
 
-            RelopI32(_) if len >= 2 && type_stack[len - 1] == I32 && type_stack[len - 2] == I32 => {
-                type_stack.pop();
-                type_stack.pop();
-                type_stack.push(I32);
+            Drop => {
+                type_stack.consume(AnyType)?;
             }
-            RelopI64(_) if len >= 2 && type_stack[len - 1] == I64 && type_stack[len - 2] == I64 => {
-                type_stack.pop();
-                type_stack.pop();
-                type_stack.push(I32);
-            }
-            RelopF32(_) if len >= 2 && type_stack[len - 1] == F32 && type_stack[len - 2] == F32 => {
-                type_stack.pop();
-                type_stack.pop();
-                type_stack.push(I32);
-            }
-            RelopF64(_) if len >= 2 && type_stack[len - 1] == F64 && type_stack[len - 2] == F64 => {
-                type_stack.pop();
-                type_stack.pop();
-                type_stack.push(I32);
-            }
-            Cvtop(ref op) => match op {
-                CvtopKind::I32WrapI64 if type_stack.last() == Some(&I64) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
+            Select => {
+                type_stack.consume(Type(I32))?;
+                let t1 = type_stack.consume(AnyType)?;
+                let t2 = type_stack.consume(AnyType)?;
+                if t1 != t2 {
+                    unimplemented!() // @todo
                 }
-                CvtopKind::I64ExtendI32S if type_stack.last() == Some(&I32) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I64ExtendI32U if type_stack.last() == Some(&I32) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I32TruncF32S if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I32TruncF32U if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I32TruncF64S if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I32TruncF64U if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I64TruncF32S if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I64TruncF32U if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I64TruncF64S if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I64TruncF64U if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I32TruncSatF32S if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I32TruncSatF32U if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I32TruncSatF64S if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I32TruncSatF64U if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I64TruncSatF32S if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I64TruncSatF32U if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I64TruncSatF64S if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::I64TruncSatF64U if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::F32ConvertI32S if type_stack.last() == Some(&I32) => {
-                    type_stack.pop();
-                    type_stack.push(F32);
-                }
-                CvtopKind::F32ConvertI32U if type_stack.last() == Some(&I32) => {
-                    type_stack.pop();
-                    type_stack.push(F32);
-                }
-                CvtopKind::F32ConvertI64S if type_stack.last() == Some(&I64) => {
-                    type_stack.pop();
-                    type_stack.push(F32);
-                }
-                CvtopKind::F32ConvertI64U if type_stack.last() == Some(&I64) => {
-                    type_stack.pop();
-                    type_stack.push(F32);
-                }
-                CvtopKind::F64ConvertI32S if type_stack.last() == Some(&I32) => {
-                    type_stack.pop();
-                    type_stack.push(F64);
-                }
-                CvtopKind::F64ConvertI32U if type_stack.last() == Some(&I32) => {
-                    type_stack.pop();
-                    type_stack.push(F64);
-                }
-                CvtopKind::F64ConvertI64S if type_stack.last() == Some(&I64) => {
-                    type_stack.pop();
-                    type_stack.push(F64);
-                }
-                CvtopKind::F64ConvertI64U if type_stack.last() == Some(&I64) => {
-                    type_stack.pop();
-                    type_stack.push(F64);
-                }
-                CvtopKind::F32DemoteF64 if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(F32);
-                }
-                CvtopKind::F64PromoteF32 if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(F64);
-                }
-                CvtopKind::I32ReinterpretF32 if type_stack.last() == Some(&F32) => {
-                    type_stack.pop();
-                    type_stack.push(I32);
-                }
-                CvtopKind::I64ReinterpretF64 if type_stack.last() == Some(&F64) => {
-                    type_stack.pop();
-                    type_stack.push(I64);
-                }
-                CvtopKind::F32ReinterpretI32 if type_stack.last() == Some(&I32) => {
-                    type_stack.pop();
-                    type_stack.push(F32);
-                }
-                CvtopKind::F64ReinterpretI64 if type_stack.last() == Some(&I64) => {
-                    type_stack.pop();
-                    type_stack.push(F64);
-                }
-                _ => unimplemented!(), // @todo
-            },
-
-            Drop if len >= 1 => {
-                type_stack.pop();
-            }
-            Select
-                if len >= 3
-                    && type_stack[len - 1] == I32
-                    && type_stack[len - 2] == type_stack[len - 3] =>
-            {
-                type_stack.pop();
-                type_stack.pop();
+                type_stack.produce(t1)
             }
 
-            GetLocal(idx) if idx.to_usize() < self.locals.len() => {
+            GetLocal(idx) => {
+                if idx.to_usize() >= self.locals.len() {
+                    unimplemented!()
+                }
+                type_stack.produce(Type(self.locals[idx.to_usize()].clone()));
+            }
+            SetLocal(idx) => {
+                if idx.to_usize() >= self.locals.len() {
+                    unimplemented!()
+                }
+                type_stack.consume(Type(self.locals[idx.to_usize()].clone()))?;
+            }
+            TeeLocal(idx) => {
+                if idx.to_usize() >= self.locals.len() {
+                    unimplemented!()
+                }
                 let t = self.locals[idx.to_usize()].clone();
-                type_stack.push(t);
+                type_stack.consume(Type(t.clone()))?;
+                type_stack.produce(Type(t));
             }
-            SetLocal(idx)
-                if idx.to_usize() < self.locals.len()
-                    && type_stack.last() == Some(&self.locals[idx.to_usize()]) =>
-            {
-                type_stack.pop();
+            GetGlobal(idx) => {
+                if idx.to_usize() >= self.globals.len() {
+                    unimplemented!()
+                }
+                type_stack.produce(Type(self.globals[idx.to_usize()].typ().clone()));
             }
-            TeeLocal(idx)
-                if idx.to_usize() < self.locals.len()
-                    && type_stack.last() == Some(&self.locals[idx.to_usize()]) =>
-            {
-                ()
-            }
-            GetGlobal(idx) if idx.to_usize() < self.globals.len() => {
-                let t = self.globals[idx.to_usize()].typ().clone();
-                type_stack.push(t);
-            }
-            SetGlobal(idx)
-                if idx.to_usize() < self.globals.len()
-                    && type_stack.last() == Some(self.globals[idx.to_usize()].typ())
-                    && self.globals[idx.to_usize()].mutability() == &Mutability::Var =>
-            {
-                type_stack.pop();
+            SetGlobal(idx) => {
+                if idx.to_usize() >= self.globals.len() {
+                    unimplemented!()
+                }
+                if self.globals[idx.to_usize()].mutability() != &Mutability::Var {
+                    unimplemented!()
+                }
+                type_stack.consume(Type(self.globals[idx.to_usize()].typ().clone()))?;
             }
 
             LoadI32(opt, memarg) => {
@@ -377,39 +347,30 @@ impl TypeContext {
                     unimplemented!() // @todo
                 }
                 self.validate_memtype(&self.mems[0])?;
-                if type_stack.last() != Some(&I32) {
-                    unimplemented!() // @todo
-                }
+                type_stack.consume(Type(I32))?;
+                type_stack.produce(Type(I32));
             }
             MemorySize => {
                 if self.mems.len() < 1 {
                     unimplemented!() // @todo
                 }
                 self.validate_memtype(&self.mems[0])?;
-                type_stack.push(I32);
+                type_stack.produce(Type(I32));
             }
 
             Nop => (),
-            Unreachable => (),
+            Unreachable => (), // @todo
             Block(blocktype, instr_seq) => {
                 let functype = self.validate_blocktype(blocktype)?;
-                let param_len = functype.param_type().len();
-                if len < param_len {
-                    unimplemented!() // @todo
-                }
-                for (i, t) in functype.param_type().iter().enumerate() {
-                    if t != &type_stack[len - param_len + i] {
-                        unimplemented!() // @todo
-                    }
-                }
                 self.labels.push_front(functype.return_type().clone());
                 self.validate_instr_seq(instr_seq, functype.param_type(), functype.return_type())?;
                 self.labels.pop_front();
-                for _ in 0..functype.param_type().len() {
-                    type_stack.pop();
+
+                for t in functype.param_type().iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
                 }
                 for t in functype.return_type().iter() {
-                    type_stack.push(t.clone());
+                    type_stack.produce(Type(t.clone()));
                 }
             }
             Br(labelidx) => {
@@ -418,14 +379,11 @@ impl TypeContext {
                     unimplemented!() // @todo
                 }
                 let resulttype = &self.labels[i];
-                let result_len = resulttype.len();
-                if len < result_len {
-                    unimplemented!() // @todo
+                for t in resulttype.iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
                 }
-                for (i, t) in resulttype.iter().enumerate() {
-                    if t != &type_stack[len - result_len + i] {
-                        unimplemented!() // @todo
-                    }
+                for t in resulttype.iter().rev() {
+                    type_stack.produce(Type(t.clone()));
                 }
             }
             BrTable(labelidxes, default_labelidx) => {
@@ -442,47 +400,33 @@ impl TypeContext {
                         unimplemented!() // @todo
                     }
                 }
-                let result_len = resulttype.len();
-                if len < result_len + 1 {
-                    unimplemented!() // @todo
+                type_stack.consume(Type(I32))?;
+                for t in resulttype.iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
                 }
-                if type_stack[len - 1] != I32 {
-                    unimplemented!() // @todo
+                for t in resulttype.iter().rev() {
+                    type_stack.produce(Type(t.clone()));
                 }
-                for (i, t) in resulttype.iter().enumerate() {
-                    if t != &type_stack[len - result_len - 1 + i] {
-                        unimplemented!() // @todo
-                    }
-                }
-                type_stack.pop();
             }
             Return => {
                 let return_type = self.return_type.as_ref().unwrap();
-                if len < return_type.len() {
-                    unimplemented!() // @todo
+                for t in return_type.iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
                 }
-                for (i, t) in return_type.iter().enumerate() {
-                    if t != &type_stack[len - i - 1] {
-                        unimplemented!() // @todo
-                    }
+                for t in return_type.iter().rev() {
+                    type_stack.produce(Type(t.clone()));
                 }
             }
-            Call(funcidx) if funcidx.to_usize() < self.funcs.len() => {
+            Call(funcidx) => {
+                if funcidx.to_usize() >= self.funcs.len() {
+                    unimplemented!()
+                }
                 let functype = &self.funcs[funcidx.to_usize()];
-                let param_len = functype.param_type().len();
-                if len < param_len {
-                    unimplemented!() // @todo
+                for t in functype.param_type().iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
                 }
-                for (i, t) in functype.param_type().iter().enumerate() {
-                    if t != &type_stack[len - param_len + i] {
-                        unimplemented!() // @todo
-                    }
-                }
-                for _ in 0..param_len {
-                    type_stack.pop();
-                }
-                for t in functype.return_type().iter() {
-                    type_stack.push(t.clone());
+                for t in functype.return_type().iter().rev() {
+                    type_stack.produce(Type(t.clone()));
                 }
             }
 
@@ -491,16 +435,36 @@ impl TypeContext {
         Ok(())
     }
 
+    fn validate_instr_helper_single_op(
+        &self,
+        produced_type: Valtype,
+        consumed_type: Valtype,
+        type_stack: &mut TypeStack,
+    ) -> Result<(), ValidationError> {
+        type_stack.consume(TypeStackEntry::Type(consumed_type))?;
+        type_stack.produce(TypeStackEntry::Type(produced_type));
+        Ok(())
+    }
+
+    fn validate_instr_helper_double_op(
+        &self,
+        produced_type: Valtype,
+        consumed_type: Valtype,
+        type_stack: &mut TypeStack,
+    ) -> Result<(), ValidationError> {
+        type_stack.consume(TypeStackEntry::Type(consumed_type.clone()))?;
+        type_stack.consume(TypeStackEntry::Type(consumed_type))?;
+        type_stack.produce(TypeStackEntry::Type(produced_type));
+        Ok(())
+    }
+
     fn validate_instr_helper_load(
         &self,
         memarg: &Memarg,
         bit_width: u32,
         valtype: Valtype,
-        type_stack: &mut Vec<Valtype>,
+        type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
-        if type_stack.last() != Some(&Valtype::I32) {
-            unimplemented!() // @todo
-        }
         if self.mems.len() < 1 {
             unimplemented!() // @todo
         }
@@ -508,8 +472,8 @@ impl TypeContext {
         if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
             unimplemented!() // @todo
         }
-        type_stack.pop();
-        type_stack.push(valtype);
+        type_stack.consume(TypeStackEntry::Type(Valtype::I32))?;
+        type_stack.produce(TypeStackEntry::Type(valtype));
         Ok(())
     }
 
@@ -518,18 +482,8 @@ impl TypeContext {
         memarg: &Memarg,
         bit_width: u32,
         valtype: Valtype,
-        type_stack: &mut Vec<Valtype>,
+        type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
-        let len = type_stack.len();
-        if len < 2 {
-            unimplemented!() // @todo
-        }
-        if type_stack[len - 2] != Valtype::I32 {
-            unimplemented!() // @todo
-        }
-        if type_stack[len - 1] != valtype {
-            unimplemented!() // @todo
-        }
         if self.mems.len() < 1 {
             unimplemented!() // @todo
         }
@@ -537,8 +491,8 @@ impl TypeContext {
         if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
             unimplemented!() // @todo
         }
-        type_stack.pop();
-        type_stack.pop();
+        type_stack.consume(TypeStackEntry::Type(valtype))?;
+        type_stack.consume(TypeStackEntry::Type(Valtype::I32))?;
         Ok(())
     }
 
@@ -548,17 +502,17 @@ impl TypeContext {
         param_type: &Resulttype,
         return_type: &Resulttype,
     ) -> Result<(), ValidationError> {
-        let mut type_stack = param_type.iter().map(|t| t.clone()).collect();
+        let mut type_stack = TypeStack::new();
+        for t in param_type.iter().rev() {
+            type_stack.produce(TypeStackEntry::Type(t.clone()));
+        }
         for instr in instr_seq.instr_seq().iter() {
             self.validate_instr(instr, &mut type_stack)?;
         }
         for t_r in return_type.iter().rev() {
-            let t_s = type_stack.pop().unwrap();
-            if t_r != &t_s {
-                unimplemented!() // @todo
-            }
+            type_stack.consume(TypeStackEntry::Type(t_r.clone()))?;
         }
-        if type_stack.len() == 0 {
+        if type_stack.is_empty() {
             Ok(())
         } else {
             unimplemented!() // @todo
