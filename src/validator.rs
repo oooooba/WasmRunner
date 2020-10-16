@@ -359,7 +359,7 @@ impl TypeContext {
             }
 
             Nop => (),
-            Unreachable => (), // @todo
+            Unreachable => type_stack.produce(Polymorphic),
             Block(blocktype, instr_seq) => {
                 let functype = self.validate_blocktype(blocktype)?;
                 self.labels.push_front(functype.return_type().clone());
@@ -382,9 +382,7 @@ impl TypeContext {
                 for t in resulttype.iter().rev() {
                     type_stack.consume(Type(t.clone()))?;
                 }
-                for t in resulttype.iter().rev() {
-                    type_stack.produce(Type(t.clone()));
-                }
+                type_stack.produce(Polymorphic);
             }
             BrTable(labelidxes, default_labelidx) => {
                 if default_labelidx.to_usize() >= self.labels.len() {
@@ -404,18 +402,14 @@ impl TypeContext {
                 for t in resulttype.iter().rev() {
                     type_stack.consume(Type(t.clone()))?;
                 }
-                for t in resulttype.iter().rev() {
-                    type_stack.produce(Type(t.clone()));
-                }
+                type_stack.produce(Polymorphic);
             }
             Return => {
                 let return_type = self.return_type.as_ref().unwrap();
                 for t in return_type.iter().rev() {
                     type_stack.consume(Type(t.clone()))?;
                 }
-                for t in return_type.iter().rev() {
-                    type_stack.produce(Type(t.clone()));
-                }
+                type_stack.produce(Polymorphic);
             }
             Call(funcidx) => {
                 if funcidx.to_usize() >= self.funcs.len() {
