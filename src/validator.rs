@@ -69,6 +69,7 @@ impl TypeStack {
 struct TypeContext {
     types: Vec<Functype>,
     funcs: Vec<Functype>,
+    tables: Vec<Tabletype>,
     mems: Vec<Memtype>,
     globals: Vec<Globaltype>,
     locals: Vec<Valtype>,
@@ -81,6 +82,7 @@ impl TypeContext {
         Self {
             types: Vec::new(),
             funcs: Vec::new(),
+            tables: Vec::new(),
             mems: Vec::new(),
             globals: Vec::new(),
             locals: Vec::new(),
@@ -611,12 +613,24 @@ impl TypeContext {
             .iter()
             .map(|func| module.types()[func.typ().to_usize()].make_clone())
             .collect();
+        let tables: Vec<Tabletype> = module
+            .tables()
+            .iter()
+            .map(|table| table.typ().clone())
+            .collect();
         let mems: Vec<Memtype> = module.mems().iter().map(|mem| mem.typ().clone()).collect();
         let globals: Vec<Globaltype> = module
             .globals()
             .iter()
             .map(|global| global.typ().clone())
             .collect();
+
+        if tables.len() > 1 {
+            return Err(ValidationError::Module(format!(
+                "size of tables in module ({}) must be less or equal to 1",
+                tables.len()
+            )));
+        }
 
         if mems.len() > 1 {
             return Err(ValidationError::Module(format!(
@@ -627,6 +641,7 @@ impl TypeContext {
 
         self.types = types;
         self.funcs = funcs;
+        self.tables = tables;
         self.mems = mems;
         self.globals = globals;
 
