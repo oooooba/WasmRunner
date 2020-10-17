@@ -373,6 +373,19 @@ impl TypeContext {
                     type_stack.produce(Type(t.clone()));
                 }
             }
+            Loop(blocktype, instr_seq) => {
+                let functype = self.validate_blocktype(blocktype)?;
+                self.labels.push_front(functype.param_type().clone());
+                self.validate_instr_seq(instr_seq, functype.param_type(), functype.return_type())?;
+                self.labels.pop_front();
+
+                for t in functype.param_type().iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
+                }
+                for t in functype.return_type().iter() {
+                    type_stack.produce(Type(t.clone()));
+                }
+            }
             Br(labelidx) => {
                 let i = labelidx.to_usize();
                 if i >= self.labels.len() {
