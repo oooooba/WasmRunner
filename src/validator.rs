@@ -476,6 +476,25 @@ impl TypeContext {
                     type_stack.produce(Type(t.clone()));
                 }
             }
+            CallIndirect(funcidx) => {
+                if self.tables.len() < 1 {
+                    unimplemented!() // @todo
+                }
+                if self.tables[0].elemtype() != &Elemtype::Funcref {
+                    unimplemented!() // @todo
+                }
+                if funcidx.to_usize() >= self.types.len() {
+                    unimplemented!()
+                }
+                let functype = &self.types[funcidx.to_usize()];
+                type_stack.consume(Type(I32))?;
+                for t in functype.param_type().iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
+                }
+                for t in functype.return_type().iter().rev() {
+                    type_stack.produce(Type(t.clone()));
+                }
+            }
 
             _ => unimplemented!(),
         }

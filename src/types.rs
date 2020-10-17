@@ -105,6 +105,10 @@ impl Tabletype {
     pub fn limit(&self) -> &Limit {
         &self.limit
     }
+
+    pub fn elemtype(&self) -> &Elemtype {
+        &self.elemtype
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
