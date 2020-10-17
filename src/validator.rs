@@ -59,7 +59,10 @@ impl TypeStack {
 
     fn is_empty(&self) -> bool {
         match self.stack.last() {
-            Some(TypeStackEntry::Polymorphic) => true,
+            Some(TypeStackEntry::Polymorphic) => {
+                assert_eq!(self.stack.len(), 1);
+                true
+            }
             None => true,
             _ => false,
         }
