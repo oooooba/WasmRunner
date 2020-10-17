@@ -28,29 +28,29 @@ impl TypeStack {
         self.stack.push(entry);
     }
 
-    fn consume(&mut self, entry: TypeStackEntry) -> Result<TypeStackEntry, ValidationError> {
+    fn consume(&mut self, entry: TypeStackEntry) -> Option<TypeStackEntry> {
         use TypeStackEntry::*;
         match (self.stack.pop(), entry) {
             (_, Polymorphic) => panic!(),
 
             (Some(Type(valtype_s)), Type(valtype_e)) if valtype_s == valtype_e => {
-                Ok(Type(valtype_s))
+                Some(Type(valtype_s))
             }
             (Some(Type(_)), Type(_)) => unimplemented!(), // @todo
-            (Some(Type(valtype_s)), AnyType) => Ok(Type(valtype_s)),
+            (Some(Type(valtype_s)), AnyType) => Some(Type(valtype_s)),
 
-            (Some(AnyType), Type(valtype_e)) => Ok(Type(valtype_e)),
-            (Some(AnyType), AnyType) => Ok(AnyType),
+            (Some(AnyType), Type(valtype_e)) => Some(Type(valtype_e)),
+            (Some(AnyType), AnyType) => Some(AnyType),
 
             (Some(Polymorphic), Type(valtype_e)) => {
                 assert!(self.stack.is_empty());
                 self.stack.push(Polymorphic);
-                Ok(Type(valtype_e))
+                Some(Type(valtype_e))
             }
             (Some(Polymorphic), AnyType) => {
                 assert!(self.stack.is_empty());
                 self.stack.push(Polymorphic);
-                Ok(AnyType)
+                Some(AnyType)
             }
 
             (None, _) => unimplemented!(), // @todo
@@ -64,6 +64,19 @@ impl TypeStack {
             _ => false,
         }
     }
+}
+
+fn produce(type_stack: &mut TypeStack, entry: TypeStackEntry) {
+    type_stack.produce(entry);
+}
+
+fn consume(
+    type_stack: &mut TypeStack,
+    entry: TypeStackEntry,
+) -> Result<TypeStackEntry, ValidationError> {
+    type_stack
+        .consume(entry)
+        .ok_or(ValidationError::TypeMismatch)
 }
 
 struct TypeContext {
@@ -148,10 +161,10 @@ impl TypeContext {
         use TypeStackEntry::*;
         use Valtype::*;
         match &instr.kind {
-            ConstI32(_) => type_stack.produce(Type(I32)),
-            ConstI64(_) => type_stack.produce(Type(I64)),
-            ConstF32(_) => type_stack.produce(Type(F32)),
-            ConstF64(_) => type_stack.produce(Type(F64)),
+            ConstI32(_) => produce(type_stack, Type(I32)),
+            ConstI64(_) => produce(type_stack, Type(I64)),
+            ConstF32(_) => produce(type_stack, Type(F32)),
+            ConstF64(_) => produce(type_stack, Type(F64)),
 
             UnopI32(_) => self.validate_instr_helper_single_op(I32, I32, type_stack)?,
             UnopI64(_) => self.validate_instr_helper_single_op(I64, I64, type_stack)?,
@@ -245,43 +258,43 @@ impl TypeContext {
             }
 
             Drop => {
-                type_stack.consume(AnyType)?;
+                consume(type_stack, AnyType)?;
             }
             Select => {
-                type_stack.consume(Type(I32))?;
-                let t1 = type_stack.consume(AnyType)?;
-                let t2 = type_stack.consume(AnyType)?;
+                consume(type_stack, Type(I32))?;
+                let t1 = consume(type_stack, AnyType)?;
+                let t2 = consume(type_stack, AnyType)?;
                 if t1 != t2 {
                     unimplemented!() // @todo
                 }
-                type_stack.produce(t1)
+                produce(type_stack, t1)
             }
 
             GetLocal(idx) => {
                 if idx.to_usize() >= self.locals.len() {
                     unimplemented!()
                 }
-                type_stack.produce(Type(self.locals[idx.to_usize()].clone()));
+                produce(type_stack, Type(self.locals[idx.to_usize()].clone()));
             }
             SetLocal(idx) => {
                 if idx.to_usize() >= self.locals.len() {
                     unimplemented!()
                 }
-                type_stack.consume(Type(self.locals[idx.to_usize()].clone()))?;
+                consume(type_stack, Type(self.locals[idx.to_usize()].clone()))?;
             }
             TeeLocal(idx) => {
                 if idx.to_usize() >= self.locals.len() {
                     unimplemented!()
                 }
                 let t = self.locals[idx.to_usize()].clone();
-                type_stack.consume(Type(t.clone()))?;
-                type_stack.produce(Type(t));
+                consume(type_stack, Type(t.clone()))?;
+                produce(type_stack, Type(t));
             }
             GetGlobal(idx) => {
                 if idx.to_usize() >= self.globals.len() {
                     unimplemented!()
                 }
-                type_stack.produce(Type(self.globals[idx.to_usize()].typ().clone()));
+                produce(type_stack, Type(self.globals[idx.to_usize()].typ().clone()));
             }
             SetGlobal(idx) => {
                 if idx.to_usize() >= self.globals.len() {
@@ -290,7 +303,7 @@ impl TypeContext {
                 if self.globals[idx.to_usize()].mutability() != &Mutability::Var {
                     unimplemented!()
                 }
-                type_stack.consume(Type(self.globals[idx.to_usize()].typ().clone()))?;
+                consume(type_stack, Type(self.globals[idx.to_usize()].typ().clone()))?;
             }
 
             LoadI32(opt, memarg) => {
@@ -349,19 +362,19 @@ impl TypeContext {
                     unimplemented!() // @todo
                 }
                 self.validate_memtype(&self.mems[0])?;
-                type_stack.consume(Type(I32))?;
-                type_stack.produce(Type(I32));
+                consume(type_stack, Type(I32))?;
+                produce(type_stack, Type(I32));
             }
             MemorySize => {
                 if self.mems.len() < 1 {
                     unimplemented!() // @todo
                 }
                 self.validate_memtype(&self.mems[0])?;
-                type_stack.produce(Type(I32));
+                produce(type_stack, Type(I32));
             }
 
             Nop => (),
-            Unreachable => type_stack.produce(Polymorphic),
+            Unreachable => produce(type_stack, Polymorphic),
             Block(blocktype, instr_seq) => {
                 let functype = self.validate_blocktype(blocktype)?;
                 self.labels.push_front(functype.return_type().clone());
@@ -369,10 +382,10 @@ impl TypeContext {
                 self.labels.pop_front();
 
                 for t in functype.param_type().iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
                 for t in functype.return_type().iter() {
-                    type_stack.produce(Type(t.clone()));
+                    produce(type_stack, Type(t.clone()));
                 }
             }
             Loop(blocktype, instr_seq) => {
@@ -382,10 +395,10 @@ impl TypeContext {
                 self.labels.pop_front();
 
                 for t in functype.param_type().iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
                 for t in functype.return_type().iter() {
-                    type_stack.produce(Type(t.clone()));
+                    produce(type_stack, Type(t.clone()));
                 }
             }
             If(blocktype, then_instr_seq, else_instr_seq) => {
@@ -404,12 +417,12 @@ impl TypeContext {
                 )?;
                 self.labels.pop_front();
 
-                type_stack.consume(Type(I32))?;
+                consume(type_stack, Type(I32))?;
                 for t in functype.param_type().iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
                 for t in functype.return_type().iter() {
-                    type_stack.produce(Type(t.clone()));
+                    produce(type_stack, Type(t.clone()));
                 }
             }
             Br(labelidx) => {
@@ -419,9 +432,9 @@ impl TypeContext {
                 }
                 let resulttype = &self.labels[i];
                 for t in resulttype.iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
-                type_stack.produce(Polymorphic);
+                produce(type_stack, Polymorphic);
             }
             BrIf(labelidx) => {
                 let i = labelidx.to_usize();
@@ -429,12 +442,12 @@ impl TypeContext {
                     unimplemented!() // @todo
                 }
                 let resulttype = &self.labels[i];
-                type_stack.consume(Type(I32))?;
+                consume(type_stack, Type(I32))?;
                 for t in resulttype.iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
                 for t in resulttype.iter() {
-                    type_stack.produce(Type(t.clone()));
+                    produce(type_stack, Type(t.clone()));
                 }
             }
             BrTable(labelidxes, default_labelidx) => {
@@ -451,18 +464,18 @@ impl TypeContext {
                         unimplemented!() // @todo
                     }
                 }
-                type_stack.consume(Type(I32))?;
+                consume(type_stack, Type(I32))?;
                 for t in resulttype.iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
-                type_stack.produce(Polymorphic);
+                produce(type_stack, Polymorphic);
             }
             Return => {
                 let return_type = self.return_type.as_ref().unwrap();
                 for t in return_type.iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
-                type_stack.produce(Polymorphic);
+                produce(type_stack, Polymorphic);
             }
             Call(funcidx) => {
                 if funcidx.to_usize() >= self.funcs.len() {
@@ -470,10 +483,10 @@ impl TypeContext {
                 }
                 let functype = &self.funcs[funcidx.to_usize()];
                 for t in functype.param_type().iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
                 for t in functype.return_type().iter().rev() {
-                    type_stack.produce(Type(t.clone()));
+                    produce(type_stack, Type(t.clone()));
                 }
             }
             CallIndirect(funcidx) => {
@@ -487,12 +500,12 @@ impl TypeContext {
                     unimplemented!()
                 }
                 let functype = &self.types[funcidx.to_usize()];
-                type_stack.consume(Type(I32))?;
+                consume(type_stack, Type(I32))?;
                 for t in functype.param_type().iter().rev() {
-                    type_stack.consume(Type(t.clone()))?;
+                    consume(type_stack, Type(t.clone()))?;
                 }
                 for t in functype.return_type().iter().rev() {
-                    type_stack.produce(Type(t.clone()));
+                    produce(type_stack, Type(t.clone()));
                 }
             }
 
@@ -507,8 +520,8 @@ impl TypeContext {
         consumed_type: Valtype,
         type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
-        type_stack.consume(TypeStackEntry::Type(consumed_type))?;
-        type_stack.produce(TypeStackEntry::Type(produced_type));
+        consume(type_stack, TypeStackEntry::Type(consumed_type))?;
+        produce(type_stack, TypeStackEntry::Type(produced_type));
         Ok(())
     }
 
@@ -518,9 +531,9 @@ impl TypeContext {
         consumed_type: Valtype,
         type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
-        type_stack.consume(TypeStackEntry::Type(consumed_type.clone()))?;
-        type_stack.consume(TypeStackEntry::Type(consumed_type))?;
-        type_stack.produce(TypeStackEntry::Type(produced_type));
+        consume(type_stack, TypeStackEntry::Type(consumed_type.clone()))?;
+        consume(type_stack, TypeStackEntry::Type(consumed_type))?;
+        produce(type_stack, TypeStackEntry::Type(produced_type));
         Ok(())
     }
 
@@ -538,8 +551,8 @@ impl TypeContext {
         if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
             unimplemented!() // @todo
         }
-        type_stack.consume(TypeStackEntry::Type(Valtype::I32))?;
-        type_stack.produce(TypeStackEntry::Type(valtype));
+        consume(type_stack, TypeStackEntry::Type(Valtype::I32))?;
+        produce(type_stack, TypeStackEntry::Type(valtype));
         Ok(())
     }
 
@@ -557,8 +570,8 @@ impl TypeContext {
         if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
             unimplemented!() // @todo
         }
-        type_stack.consume(TypeStackEntry::Type(valtype))?;
-        type_stack.consume(TypeStackEntry::Type(Valtype::I32))?;
+        consume(type_stack, TypeStackEntry::Type(valtype))?;
+        consume(type_stack, TypeStackEntry::Type(Valtype::I32))?;
         Ok(())
     }
 
@@ -570,13 +583,13 @@ impl TypeContext {
     ) -> Result<(), ValidationError> {
         let mut type_stack = TypeStack::new();
         for t in param_type.iter().rev() {
-            type_stack.produce(TypeStackEntry::Type(t.clone()));
+            produce(&mut type_stack, TypeStackEntry::Type(t.clone()));
         }
         for instr in instr_seq.instr_seq().iter() {
             self.validate_instr(instr, &mut type_stack)?;
         }
         for t_r in return_type.iter().rev() {
-            type_stack.consume(TypeStackEntry::Type(t_r.clone()))?;
+            consume(&mut type_stack, TypeStackEntry::Type(t_r.clone()))?;
         }
         if type_stack.is_empty() {
             Ok(())
@@ -684,6 +697,7 @@ impl TypeContext {
 pub enum ValidationError {
     Limit(String),
     Module(String),
+    TypeMismatch,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
