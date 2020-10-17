@@ -421,6 +421,20 @@ impl TypeContext {
                 }
                 type_stack.produce(Polymorphic);
             }
+            BrIf(labelidx) => {
+                let i = labelidx.to_usize();
+                if i >= self.labels.len() {
+                    unimplemented!() // @todo
+                }
+                let resulttype = &self.labels[i];
+                type_stack.consume(Type(I32))?;
+                for t in resulttype.iter().rev() {
+                    type_stack.consume(Type(t.clone()))?;
+                }
+                for t in resulttype.iter() {
+                    type_stack.produce(Type(t.clone()));
+                }
+            }
             BrTable(labelidxes, default_labelidx) => {
                 if default_labelidx.to_usize() >= self.labels.len() {
                     unimplemented!() // @todo
