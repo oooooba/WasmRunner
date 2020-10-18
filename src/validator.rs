@@ -73,6 +73,12 @@ fn produce(type_stack: &mut TypeStack, entry: TypeStackEntry) {
     type_stack.produce(entry);
 }
 
+fn produce_with_resulttype(type_stack: &mut TypeStack, resulttype: &Resulttype) {
+    for t in resulttype.iter() {
+        produce(type_stack, TypeStackEntry::Type(t.clone()));
+    }
+}
+
 fn consume(
     type_stack: &mut TypeStack,
     entry: TypeStackEntry,
@@ -80,6 +86,16 @@ fn consume(
     type_stack
         .consume(entry)
         .ok_or(ValidationError::TypeMismatch)
+}
+
+fn consume_with_resulttype(
+    type_stack: &mut TypeStack,
+    resulttype: &Resulttype,
+) -> Result<(), ValidationError> {
+    for t in resulttype.iter().rev() {
+        consume(type_stack, TypeStackEntry::Type(t.clone()))?;
+    }
+    Ok(())
 }
 
 struct TypeContext {
@@ -383,26 +399,16 @@ impl TypeContext {
                 self.labels.push_front(functype.return_type().clone());
                 self.validate_instr_seq(instr_seq, functype.param_type(), functype.return_type())?;
                 self.labels.pop_front();
-
-                for t in functype.param_type().iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
-                for t in functype.return_type().iter() {
-                    produce(type_stack, Type(t.clone()));
-                }
+                consume_with_resulttype(type_stack, functype.param_type())?;
+                produce_with_resulttype(type_stack, functype.return_type());
             }
             Loop(blocktype, instr_seq) => {
                 let functype = self.validate_blocktype(blocktype)?;
                 self.labels.push_front(functype.param_type().clone());
                 self.validate_instr_seq(instr_seq, functype.param_type(), functype.return_type())?;
                 self.labels.pop_front();
-
-                for t in functype.param_type().iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
-                for t in functype.return_type().iter() {
-                    produce(type_stack, Type(t.clone()));
-                }
+                consume_with_resulttype(type_stack, functype.param_type())?;
+                produce_with_resulttype(type_stack, functype.return_type());
             }
             If(blocktype, then_instr_seq, else_instr_seq) => {
                 let functype = self.validate_blocktype(blocktype)?;
@@ -419,14 +425,9 @@ impl TypeContext {
                     functype.return_type(),
                 )?;
                 self.labels.pop_front();
-
                 consume(type_stack, Type(I32))?;
-                for t in functype.param_type().iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
-                for t in functype.return_type().iter() {
-                    produce(type_stack, Type(t.clone()));
-                }
+                consume_with_resulttype(type_stack, functype.param_type())?;
+                produce_with_resulttype(type_stack, functype.return_type());
             }
             Br(labelidx) => {
                 let i = labelidx.to_usize();
@@ -434,9 +435,7 @@ impl TypeContext {
                     unimplemented!() // @todo
                 }
                 let resulttype = &self.labels[i];
-                for t in resulttype.iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
+                consume_with_resulttype(type_stack, resulttype)?;
                 produce(type_stack, Polymorphic);
             }
             BrIf(labelidx) => {
@@ -446,12 +445,8 @@ impl TypeContext {
                 }
                 let resulttype = &self.labels[i];
                 consume(type_stack, Type(I32))?;
-                for t in resulttype.iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
-                for t in resulttype.iter() {
-                    produce(type_stack, Type(t.clone()));
-                }
+                consume_with_resulttype(type_stack, resulttype)?;
+                produce_with_resulttype(type_stack, resulttype);
             }
             BrTable(labelidxes, default_labelidx) => {
                 if default_labelidx.to_usize() >= self.labels.len() {
@@ -468,16 +463,12 @@ impl TypeContext {
                     }
                 }
                 consume(type_stack, Type(I32))?;
-                for t in resulttype.iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
+                consume_with_resulttype(type_stack, resulttype)?;
                 produce(type_stack, Polymorphic);
             }
             Return => {
                 let return_type = self.return_type.as_ref().unwrap();
-                for t in return_type.iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
+                consume_with_resulttype(type_stack, return_type)?;
                 produce(type_stack, Polymorphic);
             }
             Call(funcidx) => {
@@ -485,12 +476,8 @@ impl TypeContext {
                     unimplemented!()
                 }
                 let functype = &self.funcs[funcidx.to_usize()];
-                for t in functype.param_type().iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
-                for t in functype.return_type().iter().rev() {
-                    produce(type_stack, Type(t.clone()));
-                }
+                consume_with_resulttype(type_stack, functype.param_type())?;
+                produce_with_resulttype(type_stack, functype.return_type());
             }
             CallIndirect(funcidx) => {
                 if self.tables.len() < 1 {
@@ -504,12 +491,8 @@ impl TypeContext {
                 }
                 let functype = &self.types[funcidx.to_usize()];
                 consume(type_stack, Type(I32))?;
-                for t in functype.param_type().iter().rev() {
-                    consume(type_stack, Type(t.clone()))?;
-                }
-                for t in functype.return_type().iter().rev() {
-                    produce(type_stack, Type(t.clone()));
-                }
+                consume_with_resulttype(type_stack, functype.param_type())?;
+                produce_with_resulttype(type_stack, functype.return_type());
             }
 
             _ => unimplemented!(),
@@ -585,15 +568,11 @@ impl TypeContext {
         return_type: &Resulttype,
     ) -> Result<(), ValidationError> {
         let mut type_stack = TypeStack::new();
-        for t in param_type.iter().rev() {
-            produce(&mut type_stack, TypeStackEntry::Type(t.clone()));
-        }
+        produce_with_resulttype(&mut type_stack, param_type);
         for instr in instr_seq.instr_seq().iter() {
             self.validate_instr(instr, &mut type_stack)?;
         }
-        for t_r in return_type.iter().rev() {
-            consume(&mut type_stack, TypeStackEntry::Type(t_r.clone()))?;
-        }
+        consume_with_resulttype(&mut type_stack, return_type)?;
         if type_stack.is_empty() {
             Ok(())
         } else {
