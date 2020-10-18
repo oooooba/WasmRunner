@@ -82,6 +82,7 @@ fn run_test(module_file_name: &str) {
                 let mut reader = &module.encode().unwrap()[..];
                 let mut decoder = Decoder::new(&mut reader);
                 let module = decoder.run().expect("should success");
+                validate(&module).unwrap();
                 let mut ctx = Context::new();
                 let moduleinst = instantiate(&mut ctx, &module).unwrap();
                 current_moduleinst = Some(moduleinst);
