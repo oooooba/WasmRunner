@@ -287,7 +287,7 @@ impl Elem {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Name(Rc<String>);
 
 impl Name {

@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::executor::*;
@@ -6,12 +7,13 @@ use crate::module::*;
 use crate::types::*;
 use crate::value::*;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Store {
     funcs: Vec<Funcinst>,
     tables: Vec<Tableinst>,
     mems: Vec<Meminst>,
     globals: Vec<Globalinst>,
+    name_table: HashMap<Name, Extarnval>,
 }
 
 impl Store {
@@ -21,6 +23,7 @@ impl Store {
             tables: Vec::new(),
             mems: Vec::new(),
             globals: Vec::new(),
+            name_table: HashMap::new(),
         }
     }
 
@@ -29,7 +32,9 @@ impl Store {
         module: &Module,
         initial_global_values: Vec<Value>,
     ) -> Result<Moduleinst, ExecutionError> {
-        self.allocmodule(module, initial_global_values)
+        let moduleinst = self.allocmodule(module, initial_global_values)?;
+        moduleinst.update_name_table(&mut self.name_table);
+        Ok(moduleinst)
     }
 
     pub fn funcs(&self) -> &Vec<Funcinst> {
@@ -171,6 +176,12 @@ impl Store {
 
         Ok(moduleinst)
     }
+
+    pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
+        self.name_table.get(name).map(|externval| match externval {
+            Extarnval::Func(funcaddr) => *funcaddr,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -279,17 +290,10 @@ impl Moduleinst {
         Ok(self.0.borrow().types[typeidx.to_usize()].make_clone())
     }
 
-    pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
-        for export in self.0.borrow().exports.iter() {
-            match export.value() {
-                Extarnval::Func(funcaddr) => {
-                    if export.name() == name {
-                        return Some(*funcaddr);
-                    }
-                }
-            }
+    pub fn update_name_table(&self, name_table: &mut HashMap<Name, Extarnval>) {
+        for exportinst in self.0.borrow().exports.iter() {
+            name_table.insert(exportinst.name().make_clone(), exportinst.value().clone());
         }
-        None
     }
 }
 
@@ -528,7 +532,7 @@ impl Exportinst {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Extarnval {
     Func(Funcaddr),
 }

@@ -335,6 +335,10 @@ impl Context {
     pub fn update_frame(&mut self, frame: Frame) {
         self.current_frame = frame;
     }
+
+    pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
+        self.store.find_funcaddr(name)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1364,7 +1368,7 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
     Ok(Control::Branch(labelidx.to_usize()))
 }
 
-pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
+pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<(), ExecutionError> {
     let mut initial_global_values = Vec::new();
     for global in module.globals() {
         let value = eval(ctx, global.init())?;
@@ -1418,7 +1422,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
         }
     }
 
-    Ok(moduleinst)
+    Ok(())
 }
 
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {

@@ -12,7 +12,6 @@ use std::fs;
 
 use decoder::Decoder;
 use executor::{instantiate, invoke, Context, ExecutionError};
-use instance::Moduleinst;
 use module::Name;
 use validator::validate;
 use value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
@@ -39,7 +38,6 @@ fn main() {
 
 fn run_invoke_ation<'a>(
     ctx: &mut Context,
-    moduleinst: &Moduleinst,
     name: &'a str,
     args: Vec<Expression<'a>>,
 ) -> Result<WasmRunnerResult, ExecutionError> {
@@ -62,9 +60,7 @@ fn run_invoke_ation<'a>(
             Value::new(value_kind)
         })
         .collect::<Vec<Value>>();
-    let funcaddr = moduleinst
-        .find_funcaddr(&Name::new(name.to_string()))
-        .unwrap();
+    let funcaddr = ctx.find_funcaddr(&Name::new(name.to_string())).unwrap();
     invoke(ctx, funcaddr, arguments)
 }
 
@@ -73,7 +69,6 @@ fn run_test(module_file_name: &str) {
     let wast_text = fs::read_to_string(module_file_name).unwrap();
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
-    let mut current_moduleinst = None;
     let mut current_context = None;
     for directive in wast_ast.directives {
         use WastDirective::*;
@@ -84,14 +79,12 @@ fn run_test(module_file_name: &str) {
                 let module = decoder.run().expect("should success");
                 validate(&module).unwrap();
                 let mut ctx = Context::new();
-                let moduleinst = instantiate(&mut ctx, &module).unwrap();
-                current_moduleinst = Some(moduleinst);
+                instantiate(&mut ctx, &module).unwrap();
                 current_context = Some(ctx);
             }
             Invoke(WastInvoke { name, args, .. }) => {
                 let ctx = current_context.as_mut().unwrap();
-                let moduleinst = current_moduleinst.as_ref().unwrap();
-                run_invoke_ation(ctx, moduleinst, name, args).unwrap();
+                run_invoke_ation(ctx, name, args).unwrap();
             }
             AssertReturn { exec, results, .. } => {
                 let (func_name, arguments) = match exec {
@@ -136,10 +129,9 @@ fn run_test(module_file_name: &str) {
                     })
                     .unzip();
 
-                let moduleinst = current_moduleinst.as_ref().unwrap();
                 let ctx = current_context.as_mut().unwrap();
                 let WasmRunnerResult::Values(res) =
-                    run_invoke_ation(ctx, moduleinst, func_name, arguments).unwrap();
+                    run_invoke_ation(ctx, func_name, arguments).unwrap();
                 let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
                     res.iter()
                         .map(|v| match v.kind() {
@@ -194,9 +186,8 @@ fn run_test(module_file_name: &str) {
                     _ => unimplemented!(),
                 };
 
-                let moduleinst = current_moduleinst.as_ref().unwrap();
                 let ctx = current_context.as_mut().unwrap();
-                let funcaddr = moduleinst
+                let funcaddr = ctx
                     .find_funcaddr(&Name::new(func_name.to_string()))
                     .unwrap();
                 let res = invoke(ctx, funcaddr, arguments).unwrap_err();
