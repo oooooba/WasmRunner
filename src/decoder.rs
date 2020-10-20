@@ -769,10 +769,10 @@ fn decode_export<R: Read>(reader: &mut R) -> Result<Export, DecodeError> {
 fn decode_exportdesc<R: Read>(reader: &mut R) -> Result<Exportdesc, DecodeError> {
     let b = decode_byte(reader)?;
     match b {
-        0x00 => {
-            let x = decode_funcidx(reader)?;
-            Ok(Exportdesc::Funcidx(x))
-        }
+        0x00 => Ok(Exportdesc::Func(decode_funcidx(reader)?)),
+        0x01 => Ok(Exportdesc::Table(decode_tableidx(reader)?)),
+        0x02 => Ok(Exportdesc::Mem(decode_memidx(reader)?)),
+        0x03 => Ok(Exportdesc::Global(decode_globalidx(reader)?)),
         _ => Err(DecodeError::UnknownExportdesc(b)),
     }
 }

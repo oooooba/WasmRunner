@@ -255,7 +255,10 @@ impl Export {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Exportdesc {
-    Funcidx(Funcidx),
+    Func(Funcidx),
+    Table(Tableidx),
+    Mem(Memidx),
+    Global(Globalidx),
 }
 
 #[derive(Debug, PartialEq, Eq)]

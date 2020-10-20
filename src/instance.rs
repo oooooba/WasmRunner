@@ -160,7 +160,12 @@ impl Store {
         for export in module.exports() {
             use Exportdesc::*;
             let value = match export.desc() {
-                Funcidx(funcidx) => Extarnval::Func(funcaddrs_mod[funcidx.to_usize()].clone()),
+                Func(funcidx) => Extarnval::Func(funcaddrs_mod[funcidx.to_usize()].clone()),
+                Table(tableidx) => Extarnval::Table(tableaddrs_mod[tableidx.to_usize()].clone()),
+                Mem(memidx) => Extarnval::Mem(memaddrs_mod[memidx.to_usize()].clone()),
+                Global(globalidx) => {
+                    Extarnval::Global(globaladdrs_mod[globalidx.to_usize()].clone())
+                }
             };
             let name = export.name().make_clone();
             let exportinst = Exportinst::new(name, value);
@@ -180,6 +185,7 @@ impl Store {
     pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
         self.name_table.get(name).map(|externval| match externval {
             Extarnval::Func(funcaddr) => *funcaddr,
+            _ => unimplemented!(),
         })
     }
 }
@@ -535,4 +541,7 @@ impl Exportinst {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Extarnval {
     Func(Funcaddr),
+    Table(Tableaddr),
+    Mem(Memaddr),
+    Global(Globaladdr),
 }
