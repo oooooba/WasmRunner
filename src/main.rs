@@ -69,7 +69,7 @@ fn run_test(module_file_name: &str) {
     let wast_text = fs::read_to_string(module_file_name).unwrap();
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
-    let mut current_context = None;
+    let mut ctx = Context::new();
     for directive in wast_ast.directives {
         use WastDirective::*;
         match directive {
@@ -78,13 +78,10 @@ fn run_test(module_file_name: &str) {
                 let mut decoder = Decoder::new(&mut reader);
                 let module = decoder.run().expect("should success");
                 validate(&module).unwrap();
-                let mut ctx = Context::new();
                 instantiate(&mut ctx, &module).unwrap();
-                current_context = Some(ctx);
             }
             Invoke(WastInvoke { name, args, .. }) => {
-                let ctx = current_context.as_mut().unwrap();
-                run_invoke_ation(ctx, name, args).unwrap();
+                run_invoke_ation(&mut ctx, name, args).unwrap();
             }
             AssertReturn { exec, results, .. } => {
                 let (func_name, arguments) = match exec {
@@ -129,9 +126,8 @@ fn run_test(module_file_name: &str) {
                     })
                     .unzip();
 
-                let ctx = current_context.as_mut().unwrap();
                 let WasmRunnerResult::Values(res) =
-                    run_invoke_ation(ctx, func_name, arguments).unwrap();
+                    run_invoke_ation(&mut ctx, func_name, arguments).unwrap();
                 let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
                     res.iter()
                         .map(|v| match v.kind() {
@@ -186,11 +182,10 @@ fn run_test(module_file_name: &str) {
                     _ => unimplemented!(),
                 };
 
-                let ctx = current_context.as_mut().unwrap();
                 let funcaddr = ctx
                     .find_funcaddr(&Name::new(func_name.to_string()))
                     .unwrap();
-                let res = invoke(ctx, funcaddr, arguments).unwrap_err();
+                let res = invoke(&mut ctx, funcaddr, arguments).unwrap_err();
                 println!("{}: trap = {:?}", func_name, res);
                 assert_eq!(res, expected_trap);
                 ctx.reset();
