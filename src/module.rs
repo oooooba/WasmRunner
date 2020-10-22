@@ -5,6 +5,7 @@ use crate::types::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Module {
+    name: Option<Name>,
     types: Vec<Functype>,
     imports: Vec<Import>,
     funcs: Vec<Func>,
@@ -31,6 +32,7 @@ impl Module {
         data: Vec<Data>,
     ) -> Self {
         Self {
+            name: None,
             types,
             imports,
             funcs,
@@ -42,6 +44,10 @@ impl Module {
             elems,
             data,
         }
+    }
+
+    pub fn set_name(&mut self, name: Name) {
+        self.name = Some(name)
     }
 
     pub fn types(&self) -> &Vec<Functype> {

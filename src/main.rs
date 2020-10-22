@@ -74,9 +74,13 @@ fn run_test(module_file_name: &str) {
         use WastDirective::*;
         match directive {
             Module(mut module) => {
+                let name = module.id.map(|id| Name::new(id.name().to_string()));
                 let mut reader = &module.encode().unwrap()[..];
                 let mut decoder = Decoder::new(&mut reader);
-                let module = decoder.run().expect("should success");
+                let mut module = decoder.run().expect("should success");
+                if let Some(name) = name {
+                    module.set_name(name);
+                }
                 validate(&module).unwrap();
                 instantiate(&mut ctx, &module).unwrap();
             }
