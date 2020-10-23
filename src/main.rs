@@ -64,9 +64,9 @@ fn run_invoke_ation<'a>(
     invoke(ctx, funcaddr, arguments)
 }
 
-fn run_test(module_file_name: &str) {
-    println!("[[test]] {}", module_file_name);
-    let wast_text = fs::read_to_string(module_file_name).unwrap();
+fn run_test(wast_file_path: &str) {
+    println!("[[test]] {}", wast_file_path);
+    let wast_text = fs::read_to_string(wast_file_path).unwrap();
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
     let mut ctx = Context::new();
