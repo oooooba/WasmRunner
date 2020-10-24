@@ -179,6 +179,10 @@ impl TypeContext {
         self.validate_limit(memtype.limit(), 2usize.pow(16))
     }
 
+    fn validate_globaltype(&self, _globaltype: &Globaltype) -> Result<(), ValidationError> {
+        Ok(())
+    }
+
     fn validate_instr(
         &mut self,
         instr: &Instr,
@@ -597,6 +601,28 @@ impl TypeContext {
         self.validate_instr_seq(expr.instr_seq(), &param_resulttype, &resulttype)
     }
 
+    fn validate_const_expr(&self, expr: &Expr) -> Result<(), ValidationError> {
+        use InstrKind::*;
+        for instr in expr.instr_seq().instr_seq().iter() {
+            match &instr.kind {
+                ConstI32(_) => (),
+                ConstI64(_) => (),
+                ConstF32(_) => (),
+                ConstF64(_) => (),
+                GetGlobal(idx) => {
+                    if idx.to_usize() >= self.globals.len() {
+                        unimplemented!()
+                    }
+                    if self.globals[idx.to_usize()].mutability() != &Mutability::Const {
+                        unimplemented!()
+                    }
+                }
+                _ => unimplemented!(),
+            }
+        }
+        Ok(())
+    }
+
     fn validate_func(&mut self, func: &Func) -> Result<(), ValidationError> {
         let typ = self.types[func.typ().to_usize()].make_clone();
         self.validate_functype(&typ)?;
@@ -622,6 +648,15 @@ impl TypeContext {
 
     fn validate_mem(&self, mem: &Mem) -> Result<(), ValidationError> {
         self.validate_memtype(mem.typ())
+    }
+
+    fn validate_global(&mut self, global: &Global) -> Result<(), ValidationError> {
+        self.validate_globaltype(global.typ())?;
+        self.validate_expr(
+            global.init(),
+            &Resulttype::new(vec![global.typ().typ().clone()]),
+        )?;
+        self.validate_const_expr(global.init())
     }
 
     fn validate_module(&mut self, module: &Module) -> Result<(), ValidationError> {
@@ -681,6 +716,10 @@ impl TypeContext {
 
         for mem in module.mems() {
             self.validate_mem(mem)?;
+        }
+
+        for global in module.globals() {
+            self.validate_global(global)?;
         }
 
         Ok(())
