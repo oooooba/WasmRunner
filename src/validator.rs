@@ -175,8 +175,8 @@ impl TypeContext {
         self.validate_limit(tabletype.limit(), 1usize << 32)
     }
 
-    fn validate_table(&self, table: &Table) -> Result<(), ValidationError> {
-        self.validate_tabletype(table.typ())
+    fn validate_memtype(&self, memtype: &Memtype) -> Result<(), ValidationError> {
+        self.validate_limit(memtype.limit(), 2usize.pow(16))
     }
 
     fn validate_instr(
@@ -616,8 +616,8 @@ impl TypeContext {
         Ok(())
     }
 
-    fn validate_memtype(&self, memtype: &Memtype) -> Result<(), ValidationError> {
-        self.validate_limit(memtype.limit(), 2usize.pow(16))
+    fn validate_table(&self, table: &Table) -> Result<(), ValidationError> {
+        self.validate_tabletype(table.typ())
     }
 
     fn validate_mem(&self, mem: &Mem) -> Result<(), ValidationError> {
