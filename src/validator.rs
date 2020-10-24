@@ -171,6 +171,14 @@ impl TypeContext {
         Ok(())
     }
 
+    fn validate_tabletype(&self, tabletype: &Tabletype) -> Result<(), ValidationError> {
+        self.validate_limit(tabletype.limit(), 1usize << 32)
+    }
+
+    fn validate_table(&self, table: &Table) -> Result<(), ValidationError> {
+        self.validate_tabletype(table.typ())
+    }
+
     fn validate_instr(
         &mut self,
         instr: &Instr,
@@ -665,6 +673,10 @@ impl TypeContext {
 
         for func in module.funcs() {
             self.validate_func(func)?;
+        }
+
+        for table in module.tables() {
+            self.validate_table(table)?;
         }
 
         for mem in module.mems() {
