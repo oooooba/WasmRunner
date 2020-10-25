@@ -183,6 +183,27 @@ impl TypeContext {
         Ok(())
     }
 
+    fn validate_elem(&mut self, elem: &Elem) -> Result<(), ValidationError> {
+        if elem.table().to_usize() >= self.tables.len() {
+            unimplemented!()
+        }
+
+        if self.tables[elem.table().to_usize()].elemtype() != &Elemtype::Funcref {
+            unimplemented!()
+        }
+
+        self.validate_expr(elem.offset(), &Resulttype::new(vec![Valtype::I32]))?;
+        self.validate_const_expr(elem.offset())?;
+
+        for funcidx in elem.init() {
+            if funcidx.to_usize() >= self.funcs.len() {
+                unimplemented!()
+            }
+        }
+
+        Ok(())
+    }
+
     fn validate_instr(
         &mut self,
         instr: &Instr,
@@ -747,6 +768,10 @@ impl TypeContext {
 
         for global in module.globals() {
             self.validate_global(global)?;
+        }
+
+        for elem in module.elems() {
+            self.validate_elem(elem)?;
         }
 
         for import in module.imports() {
