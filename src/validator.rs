@@ -684,18 +684,18 @@ impl TypeContext {
             .iter()
             .map(|functype| functype.make_clone())
             .collect();
-        let funcs = module
+        let mut funcs = module
             .funcs()
             .iter()
             .map(|func| module.types()[func.typ().to_usize()].make_clone())
             .collect();
-        let tables: Vec<Tabletype> = module
+        let mut tables: Vec<Tabletype> = module
             .tables()
             .iter()
             .map(|table| table.typ().clone())
             .collect();
-        let mems: Vec<Memtype> = module.mems().iter().map(|mem| mem.typ().clone()).collect();
-        let globals: Vec<Globaltype> = module
+        let mut mems: Vec<Memtype> = module.mems().iter().map(|mem| mem.typ().clone()).collect();
+        let mut globals: Vec<Globaltype> = module
             .globals()
             .iter()
             .map(|global| global.typ().clone())
@@ -716,14 +716,22 @@ impl TypeContext {
         }
 
         self.types = types;
-        self.funcs = funcs;
-        self.tables = tables;
-        self.mems = mems;
-        self.globals = globals;
 
         for functype in module.types() {
             self.validate_functype(functype)?;
         }
+
+        let (mut imported_funcs, mut imported_tables, mut imported_mems, mut imported_globals) =
+            self.extract_imported_contents(module)?;
+        imported_funcs.append(&mut funcs);
+        imported_tables.append(&mut tables);
+        imported_mems.append(&mut mems);
+        imported_globals.append(&mut globals);
+
+        self.funcs = imported_funcs;
+        self.tables = imported_tables;
+        self.mems = imported_mems;
+        self.globals = imported_globals;
 
         for func in module.funcs() {
             self.validate_func(func)?;
@@ -746,6 +754,32 @@ impl TypeContext {
         }
 
         Ok(())
+    }
+
+    fn extract_imported_contents(
+        &self,
+        module: &Module,
+    ) -> Result<(Vec<Functype>, Vec<Tabletype>, Vec<Memtype>, Vec<Globaltype>), ValidationError>
+    {
+        let mut functypes = Vec::new();
+        let mut tabletypes = Vec::new();
+        let mut memtypes = Vec::new();
+        let mut globaltypes = Vec::new();
+        for import in module.imports() {
+            use Importdesc::*;
+            match import.desc() {
+                Func(typeidx) => {
+                    if typeidx.to_usize() >= self.types.len() {
+                        unimplemented!()
+                    }
+                    functypes.push(self.types[typeidx.to_usize()].make_clone());
+                }
+                Table(tabletype) => tabletypes.push(tabletype.clone()),
+                Mem(memtype) => memtypes.push(memtype.clone()),
+                Global(globaltype) => globaltypes.push(globaltype.clone()),
+            }
+        }
+        Ok((functypes, tabletypes, memtypes, globaltypes))
     }
 }
 
