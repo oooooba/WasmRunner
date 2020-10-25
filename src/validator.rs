@@ -659,6 +659,25 @@ impl TypeContext {
         self.validate_const_expr(global.init())
     }
 
+    fn validate_import(&self, import: &Import) -> Result<(), ValidationError> {
+        self.validate_importdesc(import.desc())
+    }
+
+    fn validate_importdesc(&self, importdesc: &Importdesc) -> Result<(), ValidationError> {
+        use Importdesc::*;
+        match importdesc {
+            Func(typeidx) => {
+                if typeidx.to_usize() >= self.types.len() {
+                    unimplemented!()
+                }
+                self.validate_functype(&self.types[typeidx.to_usize()])
+            }
+            Table(tabletype) => self.validate_tabletype(tabletype),
+            Mem(memtype) => self.validate_memtype(memtype),
+            Global(globaltype) => self.validate_globaltype(globaltype),
+        }
+    }
+
     fn validate_module(&mut self, module: &Module) -> Result<(), ValidationError> {
         let types = module
             .types()
@@ -720,6 +739,10 @@ impl TypeContext {
 
         for global in module.globals() {
             self.validate_global(global)?;
+        }
+
+        for import in module.imports() {
+            self.validate_import(import)?;
         }
 
         Ok(())

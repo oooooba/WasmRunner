@@ -54,6 +54,10 @@ impl Module {
         &self.types
     }
 
+    pub fn imports(&self) -> &Vec<Import> {
+        &self.imports
+    }
+
     pub fn funcs(&self) -> &Vec<Func> {
         &self.funcs
     }
@@ -121,6 +125,10 @@ pub struct Import {
 impl Import {
     pub fn new(module: Name, name: Name, desc: Importdesc) -> Self {
         Self { module, name, desc }
+    }
+
+    pub fn desc(&self) -> &Importdesc {
+        &self.desc
     }
 }
 
