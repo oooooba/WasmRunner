@@ -46,6 +46,10 @@ impl Module {
         }
     }
 
+    pub fn name(&self) -> Option<&Name> {
+        self.name.as_ref()
+    }
+
     pub fn set_name(&mut self, name: Name) {
         self.name = Some(name)
     }

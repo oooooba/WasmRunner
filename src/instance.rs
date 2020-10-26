@@ -62,7 +62,10 @@ impl Store {
         initial_global_values: Vec<Value>,
     ) -> Result<Moduleinst, ExecutionError> {
         let moduleinst = self.allocmodule(module, initial_global_values)?;
-        moduleinst.update_name_table(&mut self.name_table);
+        moduleinst.update_name_table(
+            module.name().map(|name| name.make_clone()),
+            &mut self.name_table,
+        );
         Ok(moduleinst)
     }
 
@@ -342,10 +345,10 @@ impl Moduleinst {
         Ok(self.0.borrow().types[typeidx.to_usize()].make_clone())
     }
 
-    fn update_name_table(&self, name_table: &mut NameTable) {
+    fn update_name_table(&self, module_name: Option<Name>, name_table: &mut NameTable) {
         for exportinst in self.0.borrow().exports.iter() {
             name_table.add(
-                None,
+                module_name.as_ref().map(|name| name.make_clone()),
                 exportinst.name().make_clone(),
                 exportinst.value().clone(),
             );
