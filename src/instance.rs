@@ -8,12 +8,41 @@ use crate::types::*;
 use crate::value::*;
 
 #[derive(Debug)]
+struct NameTable {
+    table: HashMap<(Option<Name>, Name), Extarnval>,
+}
+
+impl NameTable {
+    fn new() -> Self {
+        Self {
+            table: HashMap::new(),
+        }
+    }
+
+    fn add(
+        &mut self,
+        module_name: Option<Name>,
+        content_name: Name,
+        content: Extarnval,
+    ) -> Option<Extarnval> {
+        self.table.insert((module_name, content_name), content)
+    }
+
+    fn resolve(&self, module_name: Option<&Name>, content_name: &Name) -> Option<&Extarnval> {
+        self.table.get(&(
+            module_name.map(|name| name.make_clone()),
+            content_name.make_clone(),
+        ))
+    }
+}
+
+#[derive(Debug)]
 pub struct Store {
     funcs: Vec<Funcinst>,
     tables: Vec<Tableinst>,
     mems: Vec<Meminst>,
     globals: Vec<Globalinst>,
-    name_table: HashMap<Name, Extarnval>,
+    name_table: NameTable,
 }
 
 impl Store {
@@ -23,7 +52,7 @@ impl Store {
             tables: Vec::new(),
             mems: Vec::new(),
             globals: Vec::new(),
-            name_table: HashMap::new(),
+            name_table: NameTable::new(),
         }
     }
 
@@ -183,10 +212,12 @@ impl Store {
     }
 
     pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
-        self.name_table.get(name).map(|externval| match externval {
-            Extarnval::Func(funcaddr) => *funcaddr,
-            _ => unimplemented!(),
-        })
+        self.name_table
+            .resolve(None, name)
+            .map(|externval| match externval {
+                Extarnval::Func(funcaddr) => *funcaddr,
+                _ => unimplemented!(),
+            })
     }
 }
 
@@ -296,9 +327,13 @@ impl Moduleinst {
         Ok(self.0.borrow().types[typeidx.to_usize()].make_clone())
     }
 
-    pub fn update_name_table(&self, name_table: &mut HashMap<Name, Extarnval>) {
+    fn update_name_table(&self, name_table: &mut NameTable) {
         for exportinst in self.0.borrow().exports.iter() {
-            name_table.insert(exportinst.name().make_clone(), exportinst.value().clone());
+            name_table.add(
+                None,
+                exportinst.name().make_clone(),
+                exportinst.value().clone(),
+            );
         }
     }
 }
