@@ -70,6 +70,7 @@ fn run_test(wast_file_path: &str) {
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
     let mut ctx = Context::new();
+    let mut last_moduleinst = None;
     for directive in wast_ast.directives {
         use WastDirective::*;
         match directive {
@@ -82,7 +83,17 @@ fn run_test(wast_file_path: &str) {
                     module.set_name(name);
                 }
                 validate(&module).unwrap();
-                instantiate(&mut ctx, &module).unwrap();
+                let moduleinst = instantiate(&mut ctx, &module).unwrap();
+                last_moduleinst = Some(moduleinst);
+            }
+            Register { name, .. } => {
+                let contents = last_moduleinst
+                    .as_ref()
+                    .unwrap()
+                    .extract_exported_contents();
+                for (content_name, content) in contents {
+                    ctx.register_content(Some(Name::new(name.to_string())), content_name, content);
+                }
             }
             Invoke(WastInvoke { name, args, .. }) => {
                 run_invoke_ation(&mut ctx, name, args).unwrap();
