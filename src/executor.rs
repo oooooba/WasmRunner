@@ -339,6 +339,16 @@ impl Context {
     pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
         self.store.find_funcaddr(name)
     }
+
+    pub fn register_content(
+        &mut self,
+        module_name: Option<Name>,
+        content_name: Name,
+        content: Extarnval,
+    ) -> Option<Extarnval> {
+        self.store
+            .register_content(module_name, content_name, content)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1368,7 +1378,7 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
     Ok(Control::Branch(labelidx.to_usize()))
 }
 
-pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<(), ExecutionError> {
+pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
     let mut initial_global_values = Vec::new();
     for global in module.globals() {
         let value = eval(ctx, global.init())?;
@@ -1422,7 +1432,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<(), ExecutionEr
         }
     }
 
-    Ok(())
+    Ok(moduleinst)
 }
 
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {

@@ -237,6 +237,15 @@ impl Store {
                 _ => unimplemented!(),
             })
     }
+
+    pub fn register_content(
+        &mut self,
+        module_name: Option<Name>,
+        content_name: Name,
+        content: Extarnval,
+    ) -> Option<Extarnval> {
+        self.name_table.add(module_name, content_name, content)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -353,6 +362,15 @@ impl Moduleinst {
                 exportinst.value().clone(),
             );
         }
+    }
+
+    pub fn extract_exported_contents(&self) -> Vec<(Name, Extarnval)> {
+        self.0
+            .borrow()
+            .exports
+            .iter()
+            .map(|exportinst| (exportinst.name().make_clone(), exportinst.value().clone()))
+            .collect()
     }
 }
 
