@@ -177,13 +177,28 @@ impl Store {
             globaladdrs.push(addr);
         }
 
-        let funcaddrs_mod = funcaddrs; // @todo concatenate with externals
+        let mut funcaddrs_mod = Vec::new();
+        let mut tableaddrs_mod = Vec::new();
+        let mut memaddrs_mod = Vec::new();
+        let mut globaladdrs_mod = Vec::new();
+        for import in module.imports() {
+            let content = self
+                .name_table
+                .resolve(Some(import.module()), import.name())
+                .unwrap(); // @todo
+            match (content, import.desc()) {
+                (Extarnval::Func(addr), Importdesc::Func(_)) => funcaddrs_mod.push(*addr),
+                (Extarnval::Table(addr), Importdesc::Table(_)) => tableaddrs_mod.push(*addr),
+                (Extarnval::Mem(addr), Importdesc::Mem(_)) => memaddrs_mod.push(*addr),
+                (Extarnval::Global(addr), Importdesc::Global(_)) => globaladdrs_mod.push(*addr),
+                _ => unimplemented!(),
+            }
+        }
 
-        let tableaddrs_mod = tableaddrs; // @todo concatenate with externals
-
-        let memaddrs_mod = memaddrs; // @todo concatenate with externals
-
-        let globaladdrs_mod = globaladdrs; // @todo concatenate with externals
+        funcaddrs_mod.append(&mut funcaddrs);
+        tableaddrs_mod.append(&mut tableaddrs);
+        memaddrs_mod.append(&mut memaddrs);
+        globaladdrs_mod.append(&mut globaladdrs);
 
         let mut exports = Vec::new();
         for export in module.exports() {

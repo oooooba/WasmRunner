@@ -127,6 +127,14 @@ impl Import {
         Self { module, name, desc }
     }
 
+    pub fn module(&self) -> &Name {
+        &self.module
+    }
+
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+
     pub fn desc(&self) -> &Importdesc {
         &self.desc
     }
