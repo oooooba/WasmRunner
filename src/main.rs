@@ -1,20 +1,11 @@
-mod decoder;
-mod executor;
-mod instance;
-mod instr;
-mod module;
-mod types;
-mod validator;
-mod value;
-
 use std::env;
 use std::fs;
 
-use decoder::Decoder;
-use executor::{instantiate, invoke, Context, ExecutionError};
-use module::Name;
-use validator::validate;
-use value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
+use wasm_runner::decoder::Decoder;
+use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
+use wasm_runner::module::Name;
+use wasm_runner::validator::validate;
+use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
 // test
 use wast::parser::{self, ParseBuffer};
