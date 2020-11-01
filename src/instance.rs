@@ -25,14 +25,23 @@ impl NameTable {
         content_name: Name,
         content: Extarnval,
     ) -> Option<Extarnval> {
+        // @todo fix to return old values pair
+        if let Some(_) = module_name {
+            self.table
+                .insert((None, content_name.make_clone()), content.clone());
+        }
         self.table.insert((module_name, content_name), content)
     }
 
     fn resolve(&self, module_name: Option<&Name>, content_name: &Name) -> Option<&Extarnval> {
-        self.table.get(&(
+        let result = self.table.get(&(
             module_name.map(|name| name.make_clone()),
             content_name.make_clone(),
-        ))
+        ));
+        if result.is_some() || module_name.is_none() {
+            return result;
+        }
+        self.table.get(&(None, content_name.make_clone()))
     }
 }
 
