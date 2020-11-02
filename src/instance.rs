@@ -130,6 +130,20 @@ impl Store {
         Ok(addr)
     }
 
+    fn allochostfunc(
+        &mut self,
+        functype: Functype,
+        hostfunc: Hostfunc,
+    ) -> Result<Funcaddr, ExecutionError> {
+        let addr = Funcaddr(Address(self.funcs.len()));
+        let funcinst = Funcinst::Host {
+            typ: functype,
+            hostcode: hostfunc,
+        };
+        self.funcs.push(funcinst);
+        Ok(addr)
+    }
+
     fn alloctable(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
         let addr = Tableaddr(Address(self.tables.len()));
         let elem = vec![None; tabletype.limit().min() as usize];
@@ -258,6 +272,14 @@ impl Store {
         content: Extarnval,
     ) -> Option<Extarnval> {
         self.name_table.add(module_name, content_name, content)
+    }
+
+    pub fn register_hostfunc(
+        &mut self,
+        functype: Functype,
+        hostfunc: Hostfunc,
+    ) -> Result<Funcaddr, ExecutionError> {
+        self.allochostfunc(functype, hostfunc)
     }
 }
 
@@ -388,11 +410,18 @@ impl Moduleinst {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct Hostfunc {}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Funcinst {
     UserDefined {
         typ: Functype,
         module: Moduleinst,
         code: Func,
+    },
+    Host {
+        typ: Functype,
+        hostcode: Hostfunc,
     },
 }
 
@@ -400,6 +429,7 @@ impl Funcinst {
     pub fn typ(&self) -> &Functype {
         match self {
             Self::UserDefined { typ, .. } => &typ,
+            Self::Host { typ, .. } => &typ,
         }
     }
 }

@@ -1556,6 +1556,8 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
 
             result
         }
+
+        Funcinst::Host { .. } => unimplemented!(),
     };
 
     while let Some(ret) = result.pop() {
