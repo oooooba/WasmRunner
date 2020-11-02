@@ -162,7 +162,7 @@ impl Store {
         Ok(addr)
     }
 
-    fn allocglobal(
+    pub fn allocglobal(
         &mut self,
         globaltype: &Globaltype,
         val: Value,

@@ -357,6 +357,14 @@ impl Context {
     ) -> Result<Funcaddr, ExecutionError> {
         self.store.register_hostfunc(functype, hostfunc)
     }
+
+    pub fn register_global(
+        &mut self,
+        globaltype: &Globaltype,
+        val: Value,
+    ) -> Result<Globaladdr, ExecutionError> {
+        self.store.allocglobal(globaltype, val)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
