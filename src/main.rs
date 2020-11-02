@@ -3,7 +3,9 @@ use std::fs;
 
 use wasm_runner::decoder::Decoder;
 use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
+use wasm_runner::instance::{Extarnval, Hostfunc};
 use wasm_runner::module::Name;
+use wasm_runner::types::{Functype, Resulttype, Valtype};
 use wasm_runner::validator::validate;
 use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
@@ -61,6 +63,7 @@ fn run_test(wast_file_path: &str) {
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
     let mut ctx = Context::new();
+    register_spectest_hostfunc(&mut ctx);
     let mut last_moduleinst = None;
     for directive in wast_ast.directives {
         use WastDirective::*;
@@ -198,5 +201,100 @@ fn run_test(wast_file_path: &str) {
             }
             _ => (),
         }
+    }
+}
+
+fn hostfunc_print_i32(args: Vec<Value>) -> Result<WasmRunnerResult, ExecutionError> {
+    assert_eq!(args.len(), 1);
+    let n = match args[0].kind() {
+        ValueKind::I32(n) => n,
+        _ => panic!(),
+    };
+    println!("hostfunc_print_i32: {}", n);
+    Ok(WasmRunnerResult::Values(vec![]))
+}
+
+fn hostfunc_print_f32(args: Vec<Value>) -> Result<WasmRunnerResult, ExecutionError> {
+    assert_eq!(args.len(), 1);
+    let n = match args[0].kind() {
+        ValueKind::F32(n) => n,
+        _ => panic!(),
+    };
+    println!("hostfunc_print_f32: {}", n.to_f32());
+    Ok(WasmRunnerResult::Values(vec![]))
+}
+
+fn hostfunc_print_f64(args: Vec<Value>) -> Result<WasmRunnerResult, ExecutionError> {
+    assert_eq!(args.len(), 1);
+    let n = match args[0].kind() {
+        ValueKind::F64(n) => n,
+        _ => panic!(),
+    };
+    println!("hostfunc_print_f64: {}", n.to_f64());
+    Ok(WasmRunnerResult::Values(vec![]))
+}
+
+fn hostfunc_print_i32_f32(args: Vec<Value>) -> Result<WasmRunnerResult, ExecutionError> {
+    assert_eq!(args.len(), 2);
+    let (n0, n1) = match (args[0].kind(), args[1].kind()) {
+        (ValueKind::I32(n0), ValueKind::F32(n1)) => (n0, n1),
+        _ => panic!(),
+    };
+    println!("hostfunc_print_i32_f32: {}, {}", n0, n1.to_f32());
+    Ok(WasmRunnerResult::Values(vec![]))
+}
+
+fn hostfunc_print_f64_f64(args: Vec<Value>) -> Result<WasmRunnerResult, ExecutionError> {
+    assert_eq!(args.len(), 2);
+    let (n0, n1) = match (args[0].kind(), args[1].kind()) {
+        (ValueKind::F64(n0), ValueKind::F64(n1)) => (n0, n1),
+        _ => panic!(),
+    };
+    println!("hostfunc_print_f64_f64: {}, {}", n0.to_f64(), n1.to_f64());
+    Ok(WasmRunnerResult::Values(vec![]))
+}
+
+fn register_spectest_hostfunc(ctx: &mut Context) {
+    let modulename = Name::new("spectest".to_string());
+    let targets: Vec<(
+        _,
+        fn(Vec<Value>) -> Result<WasmRunnerResult, ExecutionError>,
+        _,
+    )> = vec![
+        (
+            "print_i32",
+            hostfunc_print_i32,
+            (vec![Valtype::I32], vec![]),
+        ),
+        (
+            "print_f32",
+            hostfunc_print_f32,
+            (vec![Valtype::F32], vec![]),
+        ),
+        (
+            "print_f64",
+            hostfunc_print_f64,
+            (vec![Valtype::F64], vec![]),
+        ),
+        (
+            "print_i32_f32",
+            hostfunc_print_i32_f32,
+            (vec![Valtype::I32, Valtype::F32], vec![]),
+        ),
+        (
+            "print_f64_f64",
+            hostfunc_print_f64_f64,
+            (vec![Valtype::F64, Valtype::F64], vec![]),
+        ),
+    ];
+    for (name, code, (param_type, return_type)) in targets {
+        let hostfunc = Hostfunc::new(code);
+        let functype = Functype::new(Resulttype::new(param_type), Resulttype::new(return_type));
+        let funcaddr = ctx.register_hostfunc(functype, hostfunc).unwrap();
+        ctx.register_content(
+            Some(modulename.make_clone()),
+            Name::new(name.to_string()),
+            Extarnval::Func(funcaddr),
+        );
     }
 }
