@@ -130,7 +130,7 @@ impl Store {
         Ok(addr)
     }
 
-    fn allochostfunc(
+    pub fn allochostfunc(
         &mut self,
         functype: Functype,
         hostfunc: Hostfunc,
@@ -272,14 +272,6 @@ impl Store {
         content: Extarnval,
     ) -> Option<Extarnval> {
         self.name_table.add(module_name, content_name, content)
-    }
-
-    pub fn register_hostfunc(
-        &mut self,
-        functype: Functype,
-        hostfunc: Hostfunc,
-    ) -> Result<Funcaddr, ExecutionError> {
-        self.allochostfunc(functype, hostfunc)
     }
 }
 

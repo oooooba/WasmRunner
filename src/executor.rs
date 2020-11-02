@@ -355,7 +355,7 @@ impl Context {
         functype: Functype,
         hostfunc: Hostfunc,
     ) -> Result<Funcaddr, ExecutionError> {
-        self.store.register_hostfunc(functype, hostfunc)
+        self.store.allochostfunc(functype, hostfunc)
     }
 
     pub fn register_global(
