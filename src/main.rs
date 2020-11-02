@@ -5,7 +5,7 @@ use wasm_runner::decoder::Decoder;
 use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
 use wasm_runner::instance::{Extarnval, Hostfunc};
 use wasm_runner::module::Name;
-use wasm_runner::types::{Functype, Resulttype, Valtype};
+use wasm_runner::types::{Functype, Globaltype, Mutability, Resulttype, Valtype};
 use wasm_runner::validator::validate;
 use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
@@ -64,6 +64,7 @@ fn run_test(wast_file_path: &str) {
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
     let mut ctx = Context::new();
     register_spectest_hostfunc(&mut ctx);
+    register_spectest_global(&mut ctx);
     let mut last_moduleinst = None;
     for directive in wast_ast.directives {
         use WastDirective::*;
@@ -295,6 +296,33 @@ fn register_spectest_hostfunc(ctx: &mut Context) {
             Some(modulename.make_clone()),
             Name::new(name.to_string()),
             Extarnval::Func(funcaddr),
+        );
+    }
+}
+
+fn register_spectest_global(ctx: &mut Context) {
+    let modulename = Name::new("spectest".to_string());
+    let targets = vec![
+        ("global_i32", ValueKind::I32(666), Mutability::Var),
+        (
+            "global_f32",
+            ValueKind::F32(F32Bytes::new(666.6)),
+            Mutability::Var,
+        ),
+        (
+            "global_f64",
+            ValueKind::F64(F64Bytes::new(666.6)),
+            Mutability::Var,
+        ),
+    ];
+    for (name, valuekind, mutability) in targets {
+        let val = Value::new(valuekind);
+        let globaltype = Globaltype::new(val.typ(), mutability);
+        let globaladdr = ctx.register_global(&globaltype, val).unwrap();
+        ctx.register_content(
+            Some(modulename.make_clone()),
+            Name::new(name.to_string()),
+            Extarnval::Global(globaladdr),
         );
     }
 }
