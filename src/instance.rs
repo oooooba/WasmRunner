@@ -121,7 +121,11 @@ impl Store {
             )));
         }
         let typ = module.types()[index].make_clone();
-        let funcinst = Funcinst::new(typ, func, moduleinst);
+        let funcinst = Funcinst::UserDefined {
+            typ,
+            module: moduleinst,
+            code: func,
+        };
         self.funcs.push(funcinst);
         Ok(addr)
     }
@@ -384,27 +388,19 @@ impl Moduleinst {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Funcinst {
-    typ: Functype,
-    module: Moduleinst,
-    code: Func,
+pub enum Funcinst {
+    UserDefined {
+        typ: Functype,
+        module: Moduleinst,
+        code: Func,
+    },
 }
 
 impl Funcinst {
-    fn new(typ: Functype, code: Func, module: Moduleinst) -> Self {
-        Self { typ, module, code }
-    }
-
     pub fn typ(&self) -> &Functype {
-        &self.typ
-    }
-
-    pub fn module(&self) -> &Moduleinst {
-        &self.module
-    }
-
-    pub fn code(&self) -> &Func {
-        &self.code
+        match self {
+            Self::UserDefined { typ, .. } => &typ,
+        }
     }
 }
 

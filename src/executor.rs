@@ -1494,63 +1494,69 @@ fn execute_instr_seq(
 
 fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
     let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
-    let func = funcinst.code().clone();
 
-    let param_size = funcinst.typ().param_type().len();
-    let return_size = funcinst.typ().return_type().len();
-    let locals_size = func.locals().len();
-    let body = func.body().make_clone();
-    let module = funcinst.module().make_clone();
+    let mut result = match funcinst {
+        Funcinst::UserDefined { typ, module, code } => {
+            let func = code;
 
-    if param_size + locals_size > u32::MAX as usize {
-        return Err(ExecutionError::StackOperationFailure(
-            "number of locals reaches limitation",
-        ));
-    }
+            let param_size = typ.param_type().len();
+            let return_size = typ.return_type().len();
+            let locals_size = func.locals().len();
+            let body = func.body().make_clone();
+            let module = module.make_clone();
 
-    let mut locals: Vec<Value> = func
-        .locals()
-        .iter()
-        .rev()
-        .map(|t| {
-            let zero_val_kind = match t {
-                Valtype::I32 => ValueKind::I32(0),
-                Valtype::I64 => ValueKind::I64(0),
-                Valtype::F32 => ValueKind::F32(F32Bytes::new(0.0)),
-                Valtype::F64 => ValueKind::F64(F64Bytes::new(0.0)),
+            if param_size + locals_size > u32::MAX as usize {
+                return Err(ExecutionError::StackOperationFailure(
+                    "number of locals reaches limitation",
+                ));
+            }
+            let mut locals: Vec<Value> = func
+                .locals()
+                .iter()
+                .rev()
+                .map(|t| {
+                    let zero_val_kind = match t {
+                        Valtype::I32 => ValueKind::I32(0),
+                        Valtype::I64 => ValueKind::I64(0),
+                        Valtype::F32 => ValueKind::F32(F32Bytes::new(0.0)),
+                        Valtype::F64 => ValueKind::F64(F64Bytes::new(0.0)),
+                    };
+                    Value::new(zero_val_kind)
+                })
+                .collect();
+
+            for _ in 0..param_size {
+                let val = ctx.stack_mut().pop_value()?;
+                locals.push(val);
+            }
+
+            locals.reverse();
+
+            let frame = Frame::new(locals, return_size, Some(module));
+            ctx.stack_mut().push_frame(frame.make_clone())?;
+
+            let prev_frame = ctx.current_frame().make_clone();
+            ctx.update_frame(frame);
+
+            let label = Label::new(return_size);
+            let ctrl = execute_instr_seq(ctx, body.instr_seq(), 0, label)?;
+            match ctrl {
+                Control::Branch(count) if count > 0 => panic!(),
+                _ => (),
             };
-            Value::new(zero_val_kind)
-        })
-        .collect();
 
-    for _ in 0..param_size {
-        let val = ctx.stack_mut().pop_value()?;
-        locals.push(val);
-    }
+            let mut result = Vec::new();
+            for _ in 0..return_size {
+                let ret = ctx.stack_mut().pop_value()?;
+                result.push(ret);
+            }
 
-    locals.reverse();
+            ctx.stack_mut().pop_frame()?;
+            ctx.update_frame(prev_frame);
 
-    let frame = Frame::new(locals, return_size, Some(module));
-    ctx.stack_mut().push_frame(frame.make_clone())?;
-
-    let prev_frame = ctx.current_frame().make_clone();
-    ctx.update_frame(frame);
-
-    let label = Label::new(return_size);
-    let ctrl = execute_instr_seq(ctx, body.instr_seq(), 0, label)?;
-    match ctrl {
-        Control::Branch(count) if count > 0 => panic!(),
-        _ => (),
+            result
+        }
     };
-
-    let mut result = Vec::new();
-    for _ in 0..return_size {
-        let ret = ctx.stack_mut().pop_value()?;
-        result.push(ret);
-    }
-
-    ctx.stack_mut().pop_frame()?;
-    ctx.update_frame(prev_frame);
 
     while let Some(ret) = result.pop() {
         ctx.stack_mut().push_value(ret)?;
