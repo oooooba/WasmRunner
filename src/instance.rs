@@ -410,7 +410,19 @@ impl Moduleinst {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Hostfunc {}
+pub struct Hostfunc {
+    code: fn(Vec<Value>) -> Result<WasmRunnerResult, ExecutionError>,
+}
+
+impl Hostfunc {
+    pub fn new(code: fn(Vec<Value>) -> Result<WasmRunnerResult, ExecutionError>) -> Self {
+        Self { code }
+    }
+
+    pub fn code(&self) -> fn(Vec<Value>) -> Result<WasmRunnerResult, ExecutionError> {
+        self.code
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Funcinst {

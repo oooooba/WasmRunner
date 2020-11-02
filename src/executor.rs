@@ -349,6 +349,14 @@ impl Context {
         self.store
             .register_content(module_name, content_name, content)
     }
+
+    pub fn register_hostfunc(
+        &mut self,
+        functype: Functype,
+        hostfunc: Hostfunc,
+    ) -> Result<Funcaddr, ExecutionError> {
+        self.store.register_hostfunc(functype, hostfunc)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1557,7 +1565,22 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             result
         }
 
-        Funcinst::Host { .. } => unimplemented!(),
+        Funcinst::Host { typ, hostcode } => {
+            let param_size = typ.param_type().len();
+            let func = hostcode.code();
+
+            let mut params = Vec::new();
+            for _ in 0..param_size {
+                let val = ctx.stack_mut().pop_value()?;
+                params.push(val);
+            }
+            params.reverse();
+
+            let WasmRunnerResult::Values(mut result) = func(params)?;
+            result.reverse();
+
+            result
+        }
     };
 
     while let Some(ret) = result.pop() {
