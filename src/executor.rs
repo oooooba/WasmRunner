@@ -1524,16 +1524,25 @@ fn post_execute_instr_seq(ctx: &mut Context) -> Result<(), ExecutionError> {
 }
 
 fn execute_instr_seq(ctx: &mut Context, instr_seq: &InstrSeq) -> Result<Control, ExecutionError> {
-    for instr in instr_seq.instr_seq().iter() {
-        loop {
+    let mut instr_seq_stack = Vec::new();
+    instr_seq_stack.push((instr_seq.make_clone(), 0));
+
+    while let Some((instr_seq, mut num_processed)) = instr_seq_stack.pop() {
+        for instr in instr_seq.instr_seq().iter().skip(num_processed) {
             let ctrl = execute(instr, ctx)?;
+            num_processed += 1;
             match ctrl {
-                Control::Fallthrough => break (),
-                Control::Loop => (),
+                Control::Fallthrough => (),
+                Control::Loop => {
+                    num_processed -= 1;
+                    instr_seq_stack.push((instr_seq, num_processed));
+                    break;
+                }
                 ctrl => return Ok(ctrl),
             }
         }
     }
+
     Ok(Control::Fallthrough)
 }
 
