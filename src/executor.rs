@@ -1462,13 +1462,11 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     ctx.stack_mut().pop_value()
 }
 
-fn execute_instr_seq(
+fn pre_execute_instr_seq(
     ctx: &mut Context,
-    instr_seq: &InstrSeq,
     num_params: usize,
     label: Label,
 ) -> Result<Control, ExecutionError> {
-    // enter instr_seq with label
     let mut args = Vec::new();
     for _ in 0..num_params {
         let arg = ctx.stack_mut().pop_value()?;
@@ -1479,16 +1477,10 @@ fn execute_instr_seq(
         ctx.stack_mut().push_value(arg)?;
     }
 
-    for instr in instr_seq.instr_seq().iter() {
-        let ctrl = execute(instr, ctx)?;
-        use Control::*;
-        match ctrl {
-            Fallthrough => (),
-            ctrl => return Ok(ctrl),
-        }
-    }
+    Ok(Control::Fallthrough)
+}
 
-    // exit instr_seq with label
+fn post_execute_instr_seq(ctx: &mut Context) -> Result<Control, ExecutionError> {
     let mut results = Vec::new();
     loop {
         let entry = ctx.stack().peek_stack_entry()?;
@@ -1505,7 +1497,28 @@ fn execute_instr_seq(
     while let Some(result) = results.pop() {
         ctx.stack_mut().push_value(result)?;
     }
+
     Ok(Control::Fallthrough)
+}
+
+fn execute_instr_seq(
+    ctx: &mut Context,
+    instr_seq: &InstrSeq,
+    num_params: usize,
+    label: Label,
+) -> Result<Control, ExecutionError> {
+    pre_execute_instr_seq(ctx, num_params, label)?;
+
+    for instr in instr_seq.instr_seq().iter() {
+        let ctrl = execute(instr, ctx)?;
+        use Control::*;
+        match ctrl {
+            Fallthrough => (),
+            ctrl => return Ok(ctrl),
+        }
+    }
+
+    post_execute_instr_seq(ctx)
 }
 
 fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
