@@ -372,6 +372,7 @@ enum Control {
     Fallthrough,
     Branch(usize),
     Return,
+    Loop,
 }
 
 fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> {
@@ -1261,20 +1262,20 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 Branch(0) => Ok(Fallthrough),
                 Branch(count) => Ok(Branch(count - 1)),
                 Control::Return => Ok(Control::Return),
+                Control::Loop => unreachable!(),
             }
         }
-        Loop(blocktype, instr_seq) => {
+        InstrKind::Loop(blocktype, instr_seq) => {
             let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
             let num_params = blocktype.param_type().len();
-            let ctrl = loop {
-                pre_execute_instr_seq(ctx, num_params, Label::new(num_params))?;
-                let ctrl = execute_instr_seq(ctx, instr_seq)?;
-                match ctrl {
-                    Fallthrough => break post_execute_instr_seq(ctx).map(|_| Fallthrough)?,
-                    Branch(0) => (),
-                    Branch(count) => break Branch(count - 1),
-                    Control::Return => break Control::Return,
-                }
+            pre_execute_instr_seq(ctx, num_params, Label::new(num_params))?;
+            let ctrl = execute_instr_seq(ctx, instr_seq)?;
+            let ctrl = match ctrl {
+                Fallthrough => post_execute_instr_seq(ctx).map(|_| Fallthrough)?,
+                Branch(0) => Control::Loop,
+                Branch(count) => Branch(count - 1),
+                Control::Return => Control::Return,
+                Control::Loop => unreachable!(),
             };
             Ok(ctrl)
         }
@@ -1296,6 +1297,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 Branch(0) => Fallthrough,
                 Branch(count) => Branch(count - 1),
                 Control::Return => Control::Return,
+                Control::Loop => unreachable!(),
             };
             Ok(ctrl)
         }
@@ -1465,6 +1467,7 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
         Control::Fallthrough => post_execute_instr_seq(ctx)?,
         Control::Branch(_) => unreachable!(),
         Control::Return => (),
+        Control::Loop => (),
     };
     ctx.stack_mut().pop_value()
 }
@@ -1510,11 +1513,13 @@ fn post_execute_instr_seq(ctx: &mut Context) -> Result<(), ExecutionError> {
 
 fn execute_instr_seq(ctx: &mut Context, instr_seq: &InstrSeq) -> Result<Control, ExecutionError> {
     for instr in instr_seq.instr_seq().iter() {
-        let ctrl = execute(instr, ctx)?;
-        use Control::*;
-        match ctrl {
-            Fallthrough => (),
-            ctrl => return Ok(ctrl),
+        loop {
+            let ctrl = execute(instr, ctx)?;
+            match ctrl {
+                Control::Fallthrough => break (),
+                Control::Loop => (),
+                ctrl => return Ok(ctrl),
+            }
         }
     }
     Ok(Control::Fallthrough)
@@ -1572,6 +1577,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             match ctrl {
                 Control::Fallthrough => post_execute_instr_seq(ctx)?,
                 Control::Branch(count) if count > 0 => panic!(),
+                Control::Loop => panic!(),
                 _ => (),
             };
 
