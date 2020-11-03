@@ -1254,22 +1254,26 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
             let num_params = blocktype.param_type().len();
             let num_returns = blocktype.return_type().len();
-            let ctrl = execute_instr_seq(ctx, instr_seq, num_params, Label::new(num_returns))?;
+            pre_execute_instr_seq(ctx, num_params, Label::new(num_returns))?;
+            let ctrl = execute_instr_seq(ctx, instr_seq)?;
             match ctrl {
+                Fallthrough => post_execute_instr_seq(ctx).map(|_| Fallthrough),
                 Branch(0) => Ok(Fallthrough),
                 Branch(count) => Ok(Branch(count - 1)),
-                ctrl => Ok(ctrl),
+                Control::Return => Ok(Control::Return),
             }
         }
         Loop(blocktype, instr_seq) => {
             let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
             let num_params = blocktype.param_type().len();
             let ctrl = loop {
-                let ctrl = execute_instr_seq(ctx, instr_seq, num_params, Label::new(num_params))?;
+                pre_execute_instr_seq(ctx, num_params, Label::new(num_params))?;
+                let ctrl = execute_instr_seq(ctx, instr_seq)?;
                 match ctrl {
+                    Fallthrough => break post_execute_instr_seq(ctx).map(|_| Fallthrough)?,
                     Branch(0) => (),
                     Branch(count) => break Branch(count - 1),
-                    ctrl => break ctrl,
+                    Control::Return => break Control::Return,
                 }
             };
             Ok(ctrl)
@@ -1285,11 +1289,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 else_instr_seq
             };
             let label = Label::new(num_returns);
-            let ctrl = execute_instr_seq(ctx, instr_seq, num_params, label)?;
+            pre_execute_instr_seq(ctx, num_params, label)?;
+            let ctrl = execute_instr_seq(ctx, instr_seq)?;
             let ctrl = match ctrl {
+                Fallthrough => post_execute_instr_seq(ctx).map(|_| Fallthrough)?,
                 Branch(0) => Fallthrough,
                 Branch(count) => Branch(count - 1),
-                ctrl => ctrl,
+                Control::Return => Control::Return,
             };
             Ok(ctrl)
         }
@@ -1453,10 +1459,11 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     let label = Label::new(1);
-    let ctrl = execute_instr_seq(ctx, expr.instr_seq(), 0, label)?;
+    pre_execute_instr_seq(ctx, 0, label)?;
+    let ctrl = execute_instr_seq(ctx, expr.instr_seq())?;
     match ctrl {
+        Control::Fallthrough => post_execute_instr_seq(ctx)?,
         Control::Branch(_) => unreachable!(),
-        Control::Fallthrough => (),
         Control::Return => (),
     };
     ctx.stack_mut().pop_value()
@@ -1466,7 +1473,7 @@ fn pre_execute_instr_seq(
     ctx: &mut Context,
     num_params: usize,
     label: Label,
-) -> Result<Control, ExecutionError> {
+) -> Result<(), ExecutionError> {
     let mut args = Vec::new();
     for _ in 0..num_params {
         let arg = ctx.stack_mut().pop_value()?;
@@ -1477,10 +1484,10 @@ fn pre_execute_instr_seq(
         ctx.stack_mut().push_value(arg)?;
     }
 
-    Ok(Control::Fallthrough)
+    Ok(())
 }
 
-fn post_execute_instr_seq(ctx: &mut Context) -> Result<Control, ExecutionError> {
+fn post_execute_instr_seq(ctx: &mut Context) -> Result<(), ExecutionError> {
     let mut results = Vec::new();
     loop {
         let entry = ctx.stack().peek_stack_entry()?;
@@ -1498,17 +1505,10 @@ fn post_execute_instr_seq(ctx: &mut Context) -> Result<Control, ExecutionError> 
         ctx.stack_mut().push_value(result)?;
     }
 
-    Ok(Control::Fallthrough)
+    Ok(())
 }
 
-fn execute_instr_seq(
-    ctx: &mut Context,
-    instr_seq: &InstrSeq,
-    num_params: usize,
-    label: Label,
-) -> Result<Control, ExecutionError> {
-    pre_execute_instr_seq(ctx, num_params, label)?;
-
+fn execute_instr_seq(ctx: &mut Context, instr_seq: &InstrSeq) -> Result<Control, ExecutionError> {
     for instr in instr_seq.instr_seq().iter() {
         let ctrl = execute(instr, ctx)?;
         use Control::*;
@@ -1517,8 +1517,7 @@ fn execute_instr_seq(
             ctrl => return Ok(ctrl),
         }
     }
-
-    post_execute_instr_seq(ctx)
+    Ok(Control::Fallthrough)
 }
 
 fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
@@ -1568,8 +1567,10 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             ctx.update_frame(frame);
 
             let label = Label::new(return_size);
-            let ctrl = execute_instr_seq(ctx, body.instr_seq(), 0, label)?;
+            pre_execute_instr_seq(ctx, 0, label)?;
+            let ctrl = execute_instr_seq(ctx, body.instr_seq())?;
             match ctrl {
+                Control::Fallthrough => post_execute_instr_seq(ctx)?,
                 Control::Branch(count) if count > 0 => panic!(),
                 _ => (),
             };
