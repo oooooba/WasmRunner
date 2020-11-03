@@ -1478,8 +1478,8 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     match ctrl {
         Control::Fallthrough => post_execute_instr_seq(ctx)?,
         Control::Branch(_) => unreachable!(),
-        Control::Return => (),
-        Control::Loop => (),
+        Control::Return => unreachable!(),
+        Control::Loop => unreachable!(),
     };
     ctx.stack_mut().pop_value()
 }
@@ -1588,9 +1588,10 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             let ctrl = execute_instr_seq(ctx, body.instr_seq())?;
             match ctrl {
                 Control::Fallthrough => post_execute_instr_seq(ctx)?,
-                Control::Branch(count) if count > 0 => panic!(),
-                Control::Loop => panic!(),
-                _ => (),
+                Control::Branch(0) => (),
+                Control::Branch(_) => unreachable!(),
+                Control::Return => (),
+                Control::Loop => unreachable!(),
             };
 
             let mut result = Vec::new();
