@@ -1272,7 +1272,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             match ctrl {
                 Fallthrough => post_execute_instr_seq(ctx).map(|_| Fallthrough),
                 Branch(0) => Ok(Fallthrough),
-                Branch(count) => Ok(Branch(count - 1)),
+                Branch(count) => Ok(Branch(count)),
                 Control::Return => Ok(Control::Return),
                 Control::Loop => unreachable!(),
             }
@@ -1285,7 +1285,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let ctrl = match ctrl {
                 Fallthrough => post_execute_instr_seq(ctx).map(|_| Fallthrough)?,
                 Branch(0) => Control::Loop,
-                Branch(count) => Branch(count - 1),
+                Branch(count) => Branch(count),
                 Control::Return => Control::Return,
                 Control::Loop => unreachable!(),
             };
@@ -1307,7 +1307,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let ctrl = match ctrl {
                 Fallthrough => post_execute_instr_seq(ctx).map(|_| Fallthrough)?,
                 Branch(0) => Fallthrough,
-                Branch(count) => Branch(count - 1),
+                Branch(count) => Branch(count),
                 Control::Return => Control::Return,
                 Control::Loop => unreachable!(),
             };
@@ -1411,7 +1411,7 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
     while let Some(value) = values.pop() {
         ctx.stack_mut().push_value(value)?;
     }
-    Ok(Control::Branch(labelidx.to_usize()))
+    Ok(Control::Branch(labelidx.to_usize() + 1))
 }
 
 pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
@@ -1533,12 +1533,14 @@ fn execute_instr_seq(ctx: &mut Context, instr_seq: &InstrSeq) -> Result<Control,
             num_processed += 1;
             match ctrl {
                 Control::Fallthrough => (),
+                Control::Branch(0) => unreachable!(),
+                Control::Branch(count) => return Ok(Control::Branch(count - 1)),
+                Control::Return => return Ok(Control::Return),
                 Control::Loop => {
                     num_processed -= 1;
                     instr_seq_stack.push((instr_seq, num_processed));
                     break;
                 }
-                ctrl => return Ok(ctrl),
             }
         }
     }
