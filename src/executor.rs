@@ -387,6 +387,12 @@ enum Control {
     Loop,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum BranchDirection {
+    Forward,
+    Backward,
+}
+
 fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> {
     use Control::*;
     use InstrKind::*;
@@ -1268,28 +1274,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             let num_params = blocktype.param_type().len();
             let num_returns = blocktype.return_type().len();
             pre_execute_instr_seq(ctx, num_params, Label::new(num_returns))?;
-            let ctrl = execute_instr_seq(ctx, instr_seq)?;
-            match ctrl {
-                Fallthrough => Ok(Fallthrough),
-                Branch(0) => Ok(Fallthrough),
-                Branch(count) => Ok(Branch(count)),
-                Control::Return => Ok(Control::Return),
-                Control::Loop => unreachable!(),
-            }
+            execute_instr_seq(ctx, instr_seq, BranchDirection::Forward)
         }
         InstrKind::Loop(blocktype, instr_seq) => {
             let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
             let num_params = blocktype.param_type().len();
             pre_execute_instr_seq(ctx, num_params, Label::new(num_params))?;
-            let ctrl = execute_instr_seq(ctx, instr_seq)?;
-            let ctrl = match ctrl {
-                Fallthrough => Fallthrough,
-                Branch(0) => Control::Loop,
-                Branch(count) => Branch(count),
-                Control::Return => Control::Return,
-                Control::Loop => unreachable!(),
-            };
-            Ok(ctrl)
+            execute_instr_seq(ctx, instr_seq, BranchDirection::Backward)
         }
         If(blocktype, then_instr_seq, else_instr_seq) => {
             let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
@@ -1303,15 +1294,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             };
             let label = Label::new(num_returns);
             pre_execute_instr_seq(ctx, num_params, label)?;
-            let ctrl = execute_instr_seq(ctx, instr_seq)?;
-            let ctrl = match ctrl {
-                Fallthrough => Fallthrough,
-                Branch(0) => Fallthrough,
-                Branch(count) => Branch(count),
-                Control::Return => Control::Return,
-                Control::Loop => unreachable!(),
-            };
-            Ok(ctrl)
+            execute_instr_seq(ctx, instr_seq, BranchDirection::Forward)
         }
         Br(labelidx) => branch(labelidx, ctx),
         BrIf(labelidx) => {
@@ -1411,7 +1394,7 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
     while let Some(value) = values.pop() {
         ctx.stack_mut().push_value(value)?;
     }
-    Ok(Control::Branch(labelidx.to_usize() + 1))
+    Ok(Control::Branch(labelidx.to_usize()))
 }
 
 pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
@@ -1474,13 +1457,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     let label = Label::new(1);
     pre_execute_instr_seq(ctx, 0, label)?;
-    let ctrl = execute_instr_seq(ctx, expr.instr_seq())?;
-    match ctrl {
-        Control::Fallthrough => (),
-        Control::Branch(_) => unreachable!(),
-        Control::Return => unreachable!(),
-        Control::Loop => unreachable!(),
-    };
+    execute_instr_seq(ctx, expr.instr_seq(), BranchDirection::Forward)?;
     ctx.stack_mut().pop_value()
 }
 
@@ -1523,7 +1500,11 @@ fn post_execute_instr_seq(ctx: &mut Context) -> Result<(), ExecutionError> {
     Ok(())
 }
 
-fn execute_instr_seq(ctx: &mut Context, instr_seq: &InstrSeq) -> Result<Control, ExecutionError> {
+fn execute_instr_seq(
+    ctx: &mut Context,
+    instr_seq: &InstrSeq,
+    branch_direction: BranchDirection,
+) -> Result<Control, ExecutionError> {
     let mut instr_seq_stack = Vec::new();
     instr_seq_stack.push((instr_seq.make_clone(), 0));
 
@@ -1534,7 +1515,12 @@ fn execute_instr_seq(ctx: &mut Context, instr_seq: &InstrSeq) -> Result<Control,
             num_processed += 1;
             match ctrl {
                 Control::Fallthrough => (),
-                Control::Branch(0) => unreachable!(),
+                Control::Branch(0) => {
+                    return match branch_direction {
+                        BranchDirection::Forward => Ok(Control::Fallthrough),
+                        BranchDirection::Backward => Ok(Control::Loop),
+                    }
+                }
                 Control::Branch(count) => return Ok(Control::Branch(count - 1)),
                 Control::Return => return Ok(Control::Return),
                 Control::Loop => {
@@ -1600,14 +1586,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
 
             let label = Label::new(return_size);
             pre_execute_instr_seq(ctx, 0, label)?;
-            let ctrl = execute_instr_seq(ctx, body.instr_seq())?;
-            match ctrl {
-                Control::Fallthrough => (),
-                Control::Branch(0) => (),
-                Control::Branch(_) => unreachable!(),
-                Control::Return => (),
-                Control::Loop => unreachable!(),
-            };
+            execute_instr_seq(ctx, body.instr_seq(), BranchDirection::Forward)?;
 
             let mut result = Vec::new();
             for _ in 0..return_size {
