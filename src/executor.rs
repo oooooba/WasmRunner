@@ -1506,13 +1506,14 @@ fn execute_instr_seq(
     branch_direction: BranchDirection,
 ) -> Result<Control, ExecutionError> {
     let mut instr_seq_stack = Vec::new();
-    instr_seq_stack.push((instr_seq.make_clone(), 0));
+    instr_seq_stack.push((instr_seq.make_clone(), 0, branch_direction));
 
-    while let Some((instr_seq, mut num_processed)) = instr_seq_stack.pop() {
-        let mut ctrl = Control::Fallthrough;
+    while let Some((instr_seq, mut num_processed, branch_direction)) = instr_seq_stack.pop() {
+        let mut is_fallthrough = true;
         for instr in instr_seq.instr_seq().iter().skip(num_processed) {
-            ctrl = execute(instr, ctx)?;
+            let ctrl = execute(instr, ctx)?;
             num_processed += 1;
+            is_fallthrough = ctrl == Control::Fallthrough;
             match ctrl {
                 Control::Fallthrough => (),
                 Control::Branch(0) => {
@@ -1525,12 +1526,12 @@ fn execute_instr_seq(
                 Control::Return => return Ok(Control::Return),
                 Control::Loop => {
                     num_processed -= 1;
-                    instr_seq_stack.push((instr_seq, num_processed));
+                    instr_seq_stack.push((instr_seq, num_processed, branch_direction));
                     break;
                 }
             }
         }
-        if ctrl == Control::Fallthrough {
+        if is_fallthrough {
             post_execute_instr_seq(ctx)?;
         }
     }
