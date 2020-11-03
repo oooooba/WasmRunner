@@ -10,14 +10,12 @@ use crate::value::*;
 
 pub const PAGE_SIZE: usize = 64 * 1024;
 
-#[derive(Debug, PartialEq, Eq)]
 struct FrameInner {
     locals: Vec<Value>,
     module: Option<Moduleinst>,
     num_result: usize,
 }
 
-#[derive(Debug, PartialEq, Eq)]
 pub struct Frame(Rc<RefCell<FrameInner>>);
 
 impl Frame {
@@ -126,6 +124,20 @@ impl Frame {
         }
     }
 }
+
+impl fmt::Debug for Frame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Frame [{:p}]", self.0)
+    }
+}
+
+impl PartialEq for Frame {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for Frame {}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Label {
