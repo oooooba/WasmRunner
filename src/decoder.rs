@@ -606,7 +606,7 @@ enum SectionId {
     Data,
 }
 
-static U8_TO_SECTION_ID_TABLE: &'static [SectionId] = &[
+static U8_TO_SECTION_ID_TABLE: &[SectionId] = &[
     SectionId::Custom,
     SectionId::Type,
     SectionId::Import,
