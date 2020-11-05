@@ -483,9 +483,7 @@ impl Meminst {
         if index + buflen > self.data.len() {
             return Err(ExecutionError::OutOfBoundsMemoryAccess);
         }
-        for i in 0..buflen {
-            buf[i] = self.data[index + i];
-        }
+        buf[..buflen].clone_from_slice(&self.data[index..(index + buflen)]);
         Ok(())
     }
 
