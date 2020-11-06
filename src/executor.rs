@@ -382,7 +382,7 @@ impl Context {
 #[derive(Debug, PartialEq, Eq)]
 enum Control {
     Fallthrough,
-    Branch(usize),
+    Branch(usize, Vec<Value>),
     Return,
     Loop,
 }
@@ -1374,27 +1374,7 @@ fn branch(labelidx: &Labelidx, ctx: &mut Context) -> Result<Control, ExecutionEr
         let value = ctx.stack_mut().pop_value()?;
         values.push(value);
     }
-    for _ in 0..(labelidx.to_usize()) {
-        let _label = ctx.stack_mut().pop_label()?;
-        loop {
-            let entry = ctx.stack().peek_stack_entry()?;
-            use StackEntry::*;
-            match entry {
-                Value(_) => (),
-                Label(_) => break,
-                Frame(_) => unreachable!(), // @todo create ExecutionError
-            }
-            ctx.stack_mut().pop_value()?;
-        }
-    }
-    let label = ctx.stack_mut().pop_label()?;
-    for _ in 0..(values.len() - label.arity()) {
-        values.pop();
-    }
-    while let Some(value) = values.pop() {
-        ctx.stack_mut().push_value(value)?;
-    }
-    Ok(Control::Branch(labelidx.to_usize()))
+    Ok(Control::Branch(labelidx.to_usize(), values))
 }
 
 pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
@@ -1516,13 +1496,33 @@ fn execute_instr_seq(
             is_fallthrough = ctrl == Control::Fallthrough;
             match ctrl {
                 Control::Fallthrough => (),
-                Control::Branch(0) => {
+                Control::Branch(0, mut values) => {
+                    let label = ctx.stack_mut().pop_label()?;
+                    for _ in 0..(values.len() - label.arity()) {
+                        values.pop();
+                    }
+                    while let Some(value) = values.pop() {
+                        ctx.stack_mut().push_value(value)?;
+                    }
                     return match branch_direction {
                         BranchDirection::Forward => Ok(Control::Fallthrough),
                         BranchDirection::Backward => Ok(Control::Loop),
-                    }
+                    };
                 }
-                Control::Branch(count) => return Ok(Control::Branch(count - 1)),
+                Control::Branch(count, values) => {
+                    let _label = ctx.stack_mut().pop_label()?;
+                    loop {
+                        let entry = ctx.stack().peek_stack_entry()?;
+                        use StackEntry::*;
+                        match entry {
+                            Value(_) => (),
+                            Label(_) => break,
+                            Frame(_) => unreachable!(), // @todo create ExecutionError
+                        }
+                        ctx.stack_mut().pop_value()?;
+                    }
+                    return Ok(Control::Branch(count - 1, values));
+                }
                 Control::Return => return Ok(Control::Return),
                 Control::Loop => {
                     num_processed -= 1;
