@@ -1,5 +1,6 @@
 pub mod decoder;
 pub mod executor;
+pub mod frame;
 pub mod instance;
 pub mod instr;
 pub mod module;
