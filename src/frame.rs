@@ -13,16 +13,23 @@ struct FrameInner {
     locals: Vec<Value>,
     module: Option<Moduleinst>,
     num_result: usize,
+    prev_frame: Option<Frame>,
 }
 
 pub struct Frame(Rc<RefCell<FrameInner>>);
 
 impl Frame {
-    pub fn new(locals: Vec<Value>, num_result: usize, module: Option<Moduleinst>) -> Self {
+    pub fn new(
+        locals: Vec<Value>,
+        num_result: usize,
+        module: Option<Moduleinst>,
+        prev_frame: Option<Frame>,
+    ) -> Self {
         Self(Rc::new(RefCell::new(FrameInner {
             locals,
             module,
             num_result,
+            prev_frame,
         })))
     }
 
@@ -73,6 +80,14 @@ impl Frame {
 
     pub fn num_result(&self) -> usize {
         self.0.borrow().num_result
+    }
+
+    pub fn prev_frame(&self) -> Option<Frame> {
+        self.0
+            .borrow()
+            .prev_frame
+            .as_ref()
+            .map(|prev_frame| prev_frame.make_clone())
     }
 
     pub fn make_clone(&self) -> Self {

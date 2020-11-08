@@ -196,7 +196,7 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Self {
-        let unused_frame = Frame::new(Vec::new(), 0, None);
+        let unused_frame = Frame::new(Vec::new(), 0, None, None);
         Self {
             store: Store::new(),
             stack: Stack::new(),
@@ -206,7 +206,7 @@ impl Context {
 
     pub fn reset(&mut self) {
         self.stack = Stack::new();
-        let unused_frame = Frame::new(Vec::new(), 0, None);
+        let unused_frame = Frame::new(Vec::new(), 0, None, None);
         self.current_frame = unused_frame;
     }
 
@@ -1467,6 +1467,20 @@ impl Executor {
         Ok(())
     }
 
+    fn exit_function(&mut self, ctx: &mut Context) -> Result<Vec<Value>, ExecutionError> {
+        let mut result = Vec::new();
+        let num_result = ctx.current_frame().num_result();
+        for _ in 0..num_result {
+            let ret = ctx.stack_mut().pop_value()?;
+            result.push(ret);
+        }
+
+        let frame = ctx.stack_mut().pop_frame()?;
+        ctx.update_frame(frame.prev_frame().unwrap());
+
+        Ok(result)
+    }
+
     fn execute(&mut self, ctx: &mut Context) -> Result<(), ExecutionError> {
         while let Some(code) = self.current_code() {
             use Code::*;
@@ -1628,10 +1642,9 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
 
             locals.reverse();
 
-            let frame = Frame::new(locals, return_size, Some(module));
-            ctx.stack_mut().push_frame(frame.make_clone())?;
-
             let prev_frame = ctx.current_frame().make_clone();
+            let frame = Frame::new(locals, return_size, Some(module), Some(prev_frame));
+            ctx.stack_mut().push_frame(frame.make_clone())?;
             ctx.update_frame(frame);
 
             let mut code = Vec::new();
@@ -1645,17 +1658,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             let mut executor = Executor::new(code);
             executor.enter_block(ctx, next_code_addr, 0, label)?;
             executor.execute(ctx)?;
-
-            let mut result = Vec::new();
-            for _ in 0..return_size {
-                let ret = ctx.stack_mut().pop_value()?;
-                result.push(ret);
-            }
-
-            ctx.stack_mut().pop_frame()?;
-            ctx.update_frame(prev_frame);
-
-            result
+            executor.exit_function(ctx)?
         }
 
         Funcinst::Host { typ, hostcode } => {
@@ -1693,7 +1696,7 @@ pub fn invoke(
     let return_size = funcinst.typ().return_type().len();
     assert_eq!(args.len(), funcinst.typ().param_type().len()); // @todo Err
 
-    let dummy_frame = Frame::new(Vec::new(), 0, None);
+    let dummy_frame = Frame::new(Vec::new(), 0, None, None);
     ctx.stack_mut().push_frame(dummy_frame.make_clone())?;
     ctx.update_frame(dummy_frame.make_clone());
 
