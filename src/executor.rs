@@ -12,15 +12,27 @@ pub const PAGE_SIZE: usize = 64 * 1024;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Label {
     arity: usize,
+    cont_addr: CodeAddr,
 }
 
 impl Label {
     fn new(arity: usize) -> Self {
-        Self { arity }
+        Self {
+            arity,
+            cont_addr: 0,
+        }
     }
 
     fn arity(&self) -> usize {
         self.arity
+    }
+
+    fn cont_addr(&self) -> CodeAddr {
+        self.cont_addr
+    }
+
+    fn set_cont_addr(&mut self, cont_addr: CodeAddr) {
+        self.cont_addr = cont_addr;
     }
 }
 
@@ -1206,7 +1218,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
         }
         Call(funcidx) => {
             let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
-            invoke_func(ctx, funcaddr).map(|_| Fallthrough)
+            invoke_func_old(ctx, funcaddr).map(|_| Fallthrough)
         }
         CallIndirect(typeidx) => {
             let tableaddr = ctx.current_frame().resolve_tableaddr(Tableidx::new(0))?;
@@ -1224,7 +1236,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
             if typ != f.typ() {
                 return Err(ExecutionError::IndirectCallTypeMismatch);
             }
-            invoke_func(ctx, funcaddr).map(|_| Fallthrough)
+            invoke_func_old(ctx, funcaddr).map(|_| Fallthrough)
         }
 
         _ => unreachable!("{:?}", instr),
@@ -1409,7 +1421,7 @@ fn execute_instr_seq(
     Ok(Control::Fallthrough)
 }
 
-fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
+fn invoke_func_old(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
     let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
 
     let mut result = match funcinst {
@@ -1496,7 +1508,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
     Ok(())
 }
 
-pub fn invoke(
+pub fn invoke_old(
     ctx: &mut Context,
     funcaddr: Funcaddr,
     args: Vec<Value>,
@@ -1514,7 +1526,7 @@ pub fn invoke(
         ctx.stack_mut().push_value(arg)?;
     }
 
-    invoke_func(ctx, funcaddr)?;
+    invoke_func_old(ctx, funcaddr)?;
 
     let mut result_values = Vec::new();
     for _ in 0..return_size {
@@ -1594,4 +1606,399 @@ impl fmt::Display for ExecutionError {
             }
         }
     }
+}
+
+type CodeAddr = usize;
+
+#[derive(Debug)]
+enum Code {
+    Instr(InstrSeq, usize),
+    Nop,
+    Unreachable,
+    Block(Blocktype, CodeAddr),
+    Loop(Blocktype, CodeAddr),
+    If(Blocktype, CodeAddr, CodeAddr),
+    Br(Labelidx),
+    BrIf(Labelidx),
+    BrTable(Vec<Labelidx>, Labelidx),
+    Return,
+    Call(Funcidx),
+    CallIndirect(Typeidx),
+    End(Option<CodeAddr>),
+}
+
+fn instr_seq_to_code(instr_seq: &InstrSeq, code: &mut Vec<Code>) {
+    for (i, instr) in instr_seq.instr_seq().iter().enumerate() {
+        match &instr.kind {
+            InstrKind::Nop => code.push(Code::Nop),
+            InstrKind::Unreachable => code.push(Code::Unreachable),
+            InstrKind::Block(blocktype, instr_seq) => {
+                let rewrite_index = code.len();
+                code.push(Code::Nop);
+                instr_seq_to_code(&instr_seq, code);
+                let cont_addr = code.len();
+                code[rewrite_index] = Code::Block(blocktype.clone(), cont_addr);
+            }
+            InstrKind::Loop(blocktype, instr_seq) => {
+                let cont_addr = code.len();
+                code.push(Code::Loop(blocktype.clone(), cont_addr));
+                instr_seq_to_code(&instr_seq, code);
+            }
+            InstrKind::If(blocktype, then_instr_seq, else_instr_seq) => {
+                let rewrite_index = code.len();
+                code.push(Code::Nop);
+                instr_seq_to_code(&then_instr_seq, code);
+                let then_end_index = code.len() - 1;
+                let else_addr = code.len();
+                instr_seq_to_code(&else_instr_seq, code);
+                let cont_addr = code.len();
+                code[rewrite_index] = Code::If(blocktype.clone(), else_addr, cont_addr);
+                code[then_end_index] = Code::End(Some(cont_addr));
+            }
+            InstrKind::Br(labelidx) => code.push(Code::Br(*labelidx)),
+            InstrKind::BrIf(labelidx) => code.push(Code::BrIf(*labelidx)),
+            InstrKind::BrTable(labelidxes, default_labelidx) => {
+                code.push(Code::BrTable(labelidxes.clone(), *default_labelidx))
+            }
+            InstrKind::Return => code.push(Code::Return),
+            InstrKind::Call(funcidx) => code.push(Code::Call(*funcidx)),
+            InstrKind::CallIndirect(typeidx) => code.push(Code::CallIndirect(*typeidx)),
+            _ => code.push(Code::Instr(instr_seq.make_clone(), i)),
+        };
+    }
+    code.push(Code::End(None));
+}
+
+struct Executor {
+    code: Vec<Code>,
+    code_addr: CodeAddr,
+}
+
+impl Executor {
+    fn new(code: Vec<Code>) -> Self {
+        Self { code, code_addr: 0 }
+    }
+
+    fn current_code(&self) -> Option<&Code> {
+        if self.code_addr < self.code.len() {
+            Some(&self.code[self.code_addr])
+        } else {
+            None
+        }
+    }
+
+    fn enter_block(
+        &mut self,
+        ctx: &mut Context,
+        next_code_addr: CodeAddr,
+        num_params: usize,
+        label: Label,
+    ) -> Result<(), ExecutionError> {
+        pre_execute_instr_seq(ctx, num_params, label)?;
+        self.code_addr = next_code_addr;
+        Ok(())
+    }
+
+    fn exit_block(
+        &mut self,
+        ctx: &mut Context,
+        next_code_addr: Option<CodeAddr>,
+    ) -> Result<(), ExecutionError> {
+        post_execute_instr_seq(ctx)?;
+        if let Some(next_code_addr) = next_code_addr {
+            self.code_addr = next_code_addr;
+        } else {
+            self.code_addr += 1;
+        }
+        Ok(())
+    }
+
+    fn branch(&mut self, labelidx: Labelidx, ctx: &mut Context) -> Result<(), ExecutionError> {
+        let mut values = Vec::new();
+        loop {
+            let entry = ctx.stack().peek_stack_entry()?;
+            use StackEntry::*;
+            match entry {
+                Value(_) => (),
+                Label(_) => break,
+                Frame(_) => unreachable!(), // @todo create ExecutionError
+            }
+            let value = ctx.stack_mut().pop_value()?;
+            values.push(value);
+        }
+
+        for _ in 0..labelidx.to_usize() {
+            let _label = ctx.stack_mut().pop_label()?;
+            loop {
+                let entry = ctx.stack().peek_stack_entry()?;
+                use StackEntry::*;
+                match entry {
+                    Value(_) => (),
+                    Label(_) => break,
+                    Frame(_) => unreachable!(), // @todo create ExecutionError
+                }
+                ctx.stack_mut().pop_value()?;
+            }
+        }
+
+        let label = ctx.stack_mut().pop_label()?;
+        for _ in 0..(values.len() - label.arity()) {
+            values.pop();
+        }
+        while let Some(value) = values.pop() {
+            ctx.stack_mut().push_value(value)?;
+        }
+        self.code_addr = label.cont_addr();
+
+        Ok(())
+    }
+
+    fn execute(&mut self, ctx: &mut Context) -> Result<(), ExecutionError> {
+        while let Some(code) = self.current_code() {
+            use Code::*;
+            match code {
+                Instr(instr_seq, index) => {
+                    let ctrl = execute(&instr_seq.instr_seq()[*index], ctx)?;
+                    assert_eq!(ctrl, Control::Fallthrough);
+                    self.code_addr += 1;
+                }
+                Nop => {
+                    self.code_addr += 1;
+                }
+                Unreachable => return Err(ExecutionError::ExplicitTrap),
+                Block(blocktype, cont_addr) => {
+                    let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+                    let num_params = blocktype.param_type().len();
+                    let num_returns = blocktype.return_type().len();
+                    let mut label = Label::new(num_returns);
+                    label.set_cont_addr(*cont_addr);
+                    let next_code_addr = self.code_addr + 1;
+                    self.enter_block(ctx, next_code_addr, num_params, label)?;
+                }
+                Loop(blocktype, cont_addr) => {
+                    let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+                    let num_params = blocktype.param_type().len();
+                    let mut label = Label::new(num_params);
+                    label.set_cont_addr(*cont_addr);
+                    let next_code_addr = self.code_addr + 1;
+                    self.enter_block(ctx, next_code_addr, num_params, label)?;
+                }
+                If(blocktype, else_addr, cont_addr) => {
+                    let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+                    let num_params = blocktype.param_type().len();
+                    let num_returns = blocktype.return_type().len();
+                    let mut label = Label::new(num_returns);
+                    label.set_cont_addr(*cont_addr);
+                    let cond = ctx.stack_mut().pop_i32()?;
+                    let next_code_addr = if cond != 0 {
+                        self.code_addr + 1
+                    } else {
+                        *else_addr
+                    };
+                    self.enter_block(ctx, next_code_addr, num_params, label)?;
+                }
+                Br(labelidx) => {
+                    let labelidx = *labelidx;
+                    self.branch(labelidx, ctx)?;
+                }
+                BrIf(labelidx) => {
+                    let c = ctx.stack_mut().pop_i32()?;
+                    if c != 0 {
+                        let labelidx = *labelidx;
+                        self.branch(labelidx, ctx)?;
+                    } else {
+                        self.code_addr += 1;
+                    }
+                }
+                BrTable(labelidxes, default_labelidx) => {
+                    let i = ctx.stack_mut().pop_i32()? as usize;
+                    let labelidx = if i < labelidxes.len() {
+                        labelidxes[i]
+                    } else {
+                        *default_labelidx
+                    };
+                    self.branch(labelidx, ctx)?;
+                }
+                Return => {
+                    let mut values = Vec::new();
+                    let num_results = ctx.current_frame().num_result();
+                    for _ in 0..num_results {
+                        let value = ctx.stack_mut().pop_value()?;
+                        values.push(value);
+                    }
+                    loop {
+                        let entry = ctx.stack().peek_stack_entry()?;
+                        use StackEntry::*;
+                        match entry {
+                            Frame(_) => break,
+                            _ => (),
+                        }
+                        ctx.stack_mut().pop_stack_entry()?;
+                    }
+                    while let Some(value) = values.pop() {
+                        ctx.stack_mut().push_value(value)?;
+                    }
+                    break;
+                }
+                Call(funcidx) => {
+                    let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
+                    invoke_func(ctx, funcaddr)?;
+                    self.code_addr += 1;
+                }
+                CallIndirect(typeidx) => {
+                    let tableaddr = ctx.current_frame().resolve_tableaddr(Tableidx::new(0))?;
+                    let i = ctx.stack_mut().pop_i32()? as usize;
+                    let tableinst = &ctx.store.tables()[tableaddr.to_usize()];
+                    if i >= tableinst.elem().len() {
+                        return Err(ExecutionError::UndefinedElement);
+                    }
+                    let typ = &ctx.current_frame().resolve_type(*typeidx)?;
+                    if tableinst.elem()[i].is_none() {
+                        unimplemented!() // @todo raise Error
+                    }
+                    let funcaddr = tableinst.elem()[i].unwrap();
+                    let f = &ctx.store.funcs()[funcaddr.to_usize()];
+                    if typ != f.typ() {
+                        return Err(ExecutionError::IndirectCallTypeMismatch);
+                    }
+                    invoke_func(ctx, funcaddr)?;
+                    self.code_addr += 1;
+                }
+                End(next_code_addr) => {
+                    let next_code_addr = *next_code_addr;
+                    self.exit_block(ctx, next_code_addr)?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
+    let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
+
+    let mut result = match funcinst {
+        Funcinst::UserDefined { typ, module, code } => {
+            let func = code;
+
+            let param_size = typ.param_type().len();
+            let return_size = typ.return_type().len();
+            let locals_size = func.locals().len();
+            let body = func.body().make_clone();
+            let module = module.make_clone();
+
+            if param_size + locals_size > u32::MAX as usize {
+                return Err(ExecutionError::StackOperationFailure(
+                    "number of locals reaches limitation",
+                ));
+            }
+            let mut locals: Vec<Value> = func
+                .locals()
+                .iter()
+                .rev()
+                .map(|t| {
+                    let zero_val_kind = match t {
+                        Valtype::I32 => ValueKind::I32(0),
+                        Valtype::I64 => ValueKind::I64(0),
+                        Valtype::F32 => ValueKind::F32(F32Bytes::new(0.0)),
+                        Valtype::F64 => ValueKind::F64(F64Bytes::new(0.0)),
+                    };
+                    Value::new(zero_val_kind)
+                })
+                .collect();
+
+            for _ in 0..param_size {
+                let val = ctx.stack_mut().pop_value()?;
+                locals.push(val);
+            }
+
+            locals.reverse();
+
+            let frame = Frame::new(locals, return_size, Some(module));
+            ctx.stack_mut().push_frame(frame.make_clone())?;
+
+            let prev_frame = ctx.current_frame().make_clone();
+            ctx.update_frame(frame);
+
+            let mut code = Vec::new();
+            instr_seq_to_code(body.instr_seq(), &mut code);
+
+            let mut label = Label::new(return_size);
+            let cont_addr = code.len();
+            label.set_cont_addr(cont_addr);
+
+            let next_code_addr = 0;
+            let mut executor = Executor::new(code);
+            executor.enter_block(ctx, next_code_addr, 0, label)?;
+            executor.execute(ctx)?;
+
+            let mut result = Vec::new();
+            for _ in 0..return_size {
+                let ret = ctx.stack_mut().pop_value()?;
+                result.push(ret);
+            }
+
+            ctx.stack_mut().pop_frame()?;
+            ctx.update_frame(prev_frame);
+
+            result
+        }
+
+        Funcinst::Host { typ, hostcode } => {
+            let param_size = typ.param_type().len();
+            let func = hostcode.code();
+
+            let mut params = Vec::new();
+            for _ in 0..param_size {
+                let val = ctx.stack_mut().pop_value()?;
+                params.push(val);
+            }
+            params.reverse();
+
+            let WasmRunnerResult::Values(mut result) = func(params)?;
+            result.reverse();
+
+            result
+        }
+    };
+
+    while let Some(ret) = result.pop() {
+        ctx.stack_mut().push_value(ret)?;
+    }
+
+    Ok(())
+}
+
+pub fn invoke(
+    ctx: &mut Context,
+    funcaddr: Funcaddr,
+    args: Vec<Value>,
+) -> Result<WasmRunnerResult, ExecutionError> {
+    ctx.stack().assert_stack_is_empty();
+    let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
+    let return_size = funcinst.typ().return_type().len();
+    assert_eq!(args.len(), funcinst.typ().param_type().len()); // @todo Err
+
+    let dummy_frame = Frame::new(Vec::new(), 0, None);
+    ctx.stack_mut().push_frame(dummy_frame.make_clone())?;
+    ctx.update_frame(dummy_frame.make_clone());
+
+    for arg in args {
+        ctx.stack_mut().push_value(arg)?;
+    }
+
+    invoke_func(ctx, funcaddr)?;
+
+    let mut result_values = Vec::new();
+    for _ in 0..return_size {
+        let value = ctx.stack_mut().pop_value()?;
+        result_values.push(value);
+    }
+    result_values.reverse();
+
+    ctx.stack_mut().pop_frame()?;
+    ctx.update_frame(dummy_frame);
+
+    ctx.stack().assert_stack_is_empty();
+    Ok(WasmRunnerResult::Values(result_values))
 }
