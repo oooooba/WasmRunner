@@ -1317,9 +1317,18 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 }
 
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
-    let label = Label::new(1);
-    pre_execute_instr_seq(ctx, 0, label)?;
-    execute_instr_seq(ctx, expr.instr_seq(), BranchDirection::Forward)?;
+    let mut code = Vec::new();
+    instr_seq_to_code(expr.instr_seq(), &mut code);
+
+    let mut label = Label::new(1);
+    let cont_addr = code.len();
+    label.set_cont_addr(cont_addr);
+
+    let next_code_addr = 0;
+    let mut executor = Executor::new(code);
+    executor.enter_block(ctx, next_code_addr, 0, label)?;
+    executor.execute(ctx)?;
+
     ctx.stack_mut().pop_value()
 }
 
