@@ -1508,40 +1508,6 @@ fn invoke_func_old(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), Executio
     Ok(())
 }
 
-pub fn invoke_old(
-    ctx: &mut Context,
-    funcaddr: Funcaddr,
-    args: Vec<Value>,
-) -> Result<WasmRunnerResult, ExecutionError> {
-    ctx.stack().assert_stack_is_empty();
-    let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
-    let return_size = funcinst.typ().return_type().len();
-    assert_eq!(args.len(), funcinst.typ().param_type().len()); // @todo Err
-
-    let dummy_frame = Frame::new(Vec::new(), 0, None);
-    ctx.stack_mut().push_frame(dummy_frame.make_clone())?;
-    ctx.update_frame(dummy_frame.make_clone());
-
-    for arg in args {
-        ctx.stack_mut().push_value(arg)?;
-    }
-
-    invoke_func_old(ctx, funcaddr)?;
-
-    let mut result_values = Vec::new();
-    for _ in 0..return_size {
-        let value = ctx.stack_mut().pop_value()?;
-        result_values.push(value);
-    }
-    result_values.reverse();
-
-    ctx.stack_mut().pop_frame()?;
-    ctx.update_frame(dummy_frame);
-
-    ctx.stack().assert_stack_is_empty();
-    Ok(WasmRunnerResult::Values(result_values))
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum ExecutionError {
     InstantiationFailure(String),
