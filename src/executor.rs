@@ -1467,6 +1467,49 @@ impl Executor {
         Ok(())
     }
 
+    fn enter_function(
+        &mut self,
+        ctx: &mut Context,
+        module: Option<Moduleinst>,
+        param_size: usize,
+        return_size: usize,
+        local_var_types: &[Valtype],
+    ) -> Result<(), ExecutionError> {
+        if param_size + local_var_types.len() > u32::MAX as usize {
+            return Err(ExecutionError::StackOperationFailure(
+                "number of locals reaches limitation",
+            ));
+        }
+
+        let mut locals: Vec<Value> = local_var_types
+            .iter()
+            .rev()
+            .map(|t| {
+                let zero_val_kind = match t {
+                    Valtype::I32 => ValueKind::I32(0),
+                    Valtype::I64 => ValueKind::I64(0),
+                    Valtype::F32 => ValueKind::F32(F32Bytes::new(0.0)),
+                    Valtype::F64 => ValueKind::F64(F64Bytes::new(0.0)),
+                };
+                Value::new(zero_val_kind)
+            })
+            .collect();
+
+        for _ in 0..param_size {
+            let val = ctx.stack_mut().pop_value()?;
+            locals.push(val);
+        }
+
+        locals.reverse();
+
+        let prev_frame = ctx.current_frame().make_clone();
+        let frame = Frame::new(locals, return_size, module, Some(prev_frame));
+        ctx.stack_mut().push_frame(frame.make_clone())?;
+        ctx.update_frame(frame);
+
+        Ok(())
+    }
+
     fn exit_function(&mut self, ctx: &mut Context) -> Result<Vec<Value>, ExecutionError> {
         let mut result = Vec::new();
         let num_result = ctx.current_frame().num_result();
@@ -1607,48 +1650,14 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
 
     let mut result = match funcinst {
         Funcinst::UserDefined { typ, module, code } => {
-            let func = code;
+            let func = code.make_clone();
 
             let param_size = typ.param_type().len();
             let return_size = typ.return_type().len();
-            let locals_size = func.locals().len();
-            let body = func.body().make_clone();
             let module = module.make_clone();
 
-            if param_size + locals_size > u32::MAX as usize {
-                return Err(ExecutionError::StackOperationFailure(
-                    "number of locals reaches limitation",
-                ));
-            }
-            let mut locals: Vec<Value> = func
-                .locals()
-                .iter()
-                .rev()
-                .map(|t| {
-                    let zero_val_kind = match t {
-                        Valtype::I32 => ValueKind::I32(0),
-                        Valtype::I64 => ValueKind::I64(0),
-                        Valtype::F32 => ValueKind::F32(F32Bytes::new(0.0)),
-                        Valtype::F64 => ValueKind::F64(F64Bytes::new(0.0)),
-                    };
-                    Value::new(zero_val_kind)
-                })
-                .collect();
-
-            for _ in 0..param_size {
-                let val = ctx.stack_mut().pop_value()?;
-                locals.push(val);
-            }
-
-            locals.reverse();
-
-            let prev_frame = ctx.current_frame().make_clone();
-            let frame = Frame::new(locals, return_size, Some(module), Some(prev_frame));
-            ctx.stack_mut().push_frame(frame.make_clone())?;
-            ctx.update_frame(frame);
-
             let mut code = Vec::new();
-            instr_seq_to_code(body.instr_seq(), &mut code);
+            instr_seq_to_code(func.body().instr_seq(), &mut code);
 
             let mut label = Label::new(return_size);
             let cont_addr = code.len();
@@ -1656,6 +1665,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
 
             let next_code_addr = 0;
             let mut executor = Executor::new(code);
+            executor.enter_function(ctx, Some(module), param_size, return_size, func.locals())?;
             executor.enter_block(ctx, next_code_addr, 0, label)?;
             executor.execute(ctx)?;
             executor.exit_function(ctx)?
