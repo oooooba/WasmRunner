@@ -1220,7 +1220,6 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     executor.enter_function(ctx, None, param_size, return_size, &[])?;
     executor.enter_block(ctx, next_code_addr, 0, label)?;
     executor.execute(ctx)?;
-    executor.exit_function(ctx)?;
 
     let result = ctx.stack_mut().pop_value()?;
 
@@ -1530,6 +1529,14 @@ impl Executor {
             result.push(ret);
         }
 
+        loop {
+            let entry = ctx.stack().peek_stack_entry()?;
+            if let StackEntry::Frame(_) = entry {
+                break;
+            }
+            ctx.stack_mut().pop_stack_entry()?;
+        }
+
         let frame = ctx.stack_mut().pop_frame()?;
         ctx.update_frame(frame.prev_frame().unwrap());
 
@@ -1606,28 +1613,7 @@ impl Executor {
                     };
                     self.branch(labelidx, ctx)?;
                 }
-                Return => {
-                    let mut values = Vec::new();
-                    let num_results = ctx.current_frame().num_result();
-                    for _ in 0..num_results {
-                        let value = ctx.stack_mut().pop_value()?;
-                        values.push(value);
-                    }
-                    loop {
-                        let entry = ctx.stack().peek_stack_entry()?;
-                        use StackEntry::*;
-                        match entry {
-                            Frame(_) => break,
-                            _ => (),
-                        }
-                        ctx.stack_mut().pop_stack_entry()?;
-                    }
-                    while let Some(value) = values.pop() {
-                        ctx.stack_mut().push_value(value)?;
-                    }
-
-                    break;
-                }
+                Return => return self.exit_function(ctx),
                 Call(funcidx) => {
                     let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
                     invoke_func(ctx, funcaddr)?;
@@ -1658,7 +1644,7 @@ impl Executor {
                 }
             }
         }
-        Ok(())
+        self.exit_function(ctx)
     }
 }
 
@@ -1685,7 +1671,6 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             executor.enter_function(ctx, Some(module), param_size, return_size, func.locals())?;
             executor.enter_block(ctx, next_code_addr, 0, label)?;
             executor.execute(ctx)?;
-            executor.exit_function(ctx)?;
         }
 
         Funcinst::Host { typ, hostcode } => {
