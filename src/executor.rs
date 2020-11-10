@@ -192,22 +192,23 @@ pub struct Context {
     store: Store,
     stack: Stack,
     current_frame: Frame,
+    dummy_frame: Frame,
 }
 
 impl Context {
     pub fn new() -> Self {
-        let unused_frame = Frame::new(Vec::new(), 0, None, None);
+        let dummy_frame = Frame::new(Vec::new(), 0, None, None);
         Self {
             store: Store::new(),
             stack: Stack::new(),
-            current_frame: unused_frame,
+            current_frame: dummy_frame.make_clone(),
+            dummy_frame,
         }
     }
 
     pub fn reset(&mut self) {
         self.stack = Stack::new();
-        let unused_frame = Frame::new(Vec::new(), 0, None, None);
-        self.current_frame = unused_frame;
+        self.current_frame = self.dummy_frame.make_clone();
     }
 
     pub fn stack(&self) -> &Stack {
@@ -1202,19 +1203,30 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 }
 
 fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
+    ctx.stack().assert_stack_is_empty();
+
+    let param_size = 0;
+    let return_size = 1;
+
     let mut code = Vec::new();
     instr_seq_to_code(expr.instr_seq(), &mut code);
 
-    let mut label = Label::new(1);
+    let mut label = Label::new(return_size);
     let cont_addr = code.len();
     label.set_cont_addr(cont_addr);
 
     let next_code_addr = 0;
     let mut executor = Executor::new(code);
+    executor.enter_function(ctx, None, param_size, return_size, &[])?;
     executor.enter_block(ctx, next_code_addr, 0, label)?;
     executor.execute(ctx)?;
+    executor.exit_function(ctx)?;
 
-    ctx.stack_mut().pop_value()
+    let result = ctx.stack_mut().pop_value()?;
+
+    ctx.stack().assert_stack_is_empty();
+
+    Ok(result)
 }
 
 fn pre_execute_instr_seq(
