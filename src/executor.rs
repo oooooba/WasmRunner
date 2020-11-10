@@ -1510,7 +1510,7 @@ impl Executor {
         Ok(())
     }
 
-    fn exit_function(&mut self, ctx: &mut Context) -> Result<Vec<Value>, ExecutionError> {
+    fn exit_function(&mut self, ctx: &mut Context) -> Result<(), ExecutionError> {
         let mut result = Vec::new();
         let num_result = ctx.current_frame().num_result();
         for _ in 0..num_result {
@@ -1521,7 +1521,11 @@ impl Executor {
         let frame = ctx.stack_mut().pop_frame()?;
         ctx.update_frame(frame.prev_frame().unwrap());
 
-        Ok(result)
+        while let Some(ret) = result.pop() {
+            ctx.stack_mut().push_value(ret)?;
+        }
+
+        Ok(())
     }
 
     fn execute(&mut self, ctx: &mut Context) -> Result<(), ExecutionError> {
@@ -1609,6 +1613,7 @@ impl Executor {
                     while let Some(value) = values.pop() {
                         ctx.stack_mut().push_value(value)?;
                     }
+
                     break;
                 }
                 Call(funcidx) => {
@@ -1648,7 +1653,7 @@ impl Executor {
 fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
     let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
 
-    let mut result = match funcinst {
+    match funcinst {
         Funcinst::UserDefined { typ, module, code } => {
             let func = code.make_clone();
 
@@ -1668,7 +1673,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             executor.enter_function(ctx, Some(module), param_size, return_size, func.locals())?;
             executor.enter_block(ctx, next_code_addr, 0, label)?;
             executor.execute(ctx)?;
-            executor.exit_function(ctx)?
+            executor.exit_function(ctx)?;
         }
 
         Funcinst::Host { typ, hostcode } => {
@@ -1685,12 +1690,10 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             let WasmRunnerResult::Values(mut result) = func(params)?;
             result.reverse();
 
-            result
+            while let Some(ret) = result.pop() {
+                ctx.stack_mut().push_value(ret)?;
+            }
         }
-    };
-
-    while let Some(ret) = result.pop() {
-        ctx.stack_mut().push_value(ret)?;
     }
 
     Ok(())
