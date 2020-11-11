@@ -16,11 +16,8 @@ pub struct Label {
 }
 
 impl Label {
-    fn new(arity: usize) -> Self {
-        Self {
-            arity,
-            cont_addr: 0,
-        }
+    fn new(arity: usize, cont_addr: CodeAddr) -> Self {
+        Self { arity, cont_addr }
     }
 
     fn arity(&self) -> usize {
@@ -29,10 +26,6 @@ impl Label {
 
     fn cont_addr(&self) -> CodeAddr {
         self.cont_addr
-    }
-
-    fn set_cont_addr(&mut self, cont_addr: CodeAddr) {
-        self.cont_addr = cont_addr;
     }
 }
 
@@ -1211,9 +1204,8 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     let mut code = Vec::new();
     instr_seq_to_code(expr.instr_seq(), &mut code);
 
-    let mut label = Label::new(return_size);
     let cont_addr = code.len();
-    label.set_cont_addr(cont_addr);
+    let label = Label::new(return_size, cont_addr);
 
     let next_code_addr = 0;
     let mut executor = Executor::new(code);
@@ -1564,16 +1556,14 @@ impl Executor {
                     let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
                     let num_params = blocktype.param_type().len();
                     let num_returns = blocktype.return_type().len();
-                    let mut label = Label::new(num_returns);
-                    label.set_cont_addr(*cont_addr);
+                    let label = Label::new(num_returns, *cont_addr);
                     let next_code_addr = self.code_addr + 1;
                     self.enter_block(ctx, next_code_addr, num_params, label)?;
                 }
                 Loop(blocktype, cont_addr) => {
                     let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
                     let num_params = blocktype.param_type().len();
-                    let mut label = Label::new(num_params);
-                    label.set_cont_addr(*cont_addr);
+                    let label = Label::new(num_params, *cont_addr);
                     let next_code_addr = self.code_addr + 1;
                     self.enter_block(ctx, next_code_addr, num_params, label)?;
                 }
@@ -1581,8 +1571,7 @@ impl Executor {
                     let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
                     let num_params = blocktype.param_type().len();
                     let num_returns = blocktype.return_type().len();
-                    let mut label = Label::new(num_returns);
-                    label.set_cont_addr(*cont_addr);
+                    let label = Label::new(num_returns, *cont_addr);
                     let cond = ctx.stack_mut().pop_i32()?;
                     let next_code_addr = if cond != 0 {
                         self.code_addr + 1
@@ -1662,9 +1651,8 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             let mut code = Vec::new();
             instr_seq_to_code(func.body().instr_seq(), &mut code);
 
-            let mut label = Label::new(return_size);
             let cont_addr = code.len();
-            label.set_cont_addr(cont_addr);
+            let label = Label::new(return_size, cont_addr);
 
             let next_code_addr = 0;
             let mut executor = Executor::new(code);
