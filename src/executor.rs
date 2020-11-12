@@ -1237,27 +1237,6 @@ fn pre_execute_instr_seq(
     Ok(())
 }
 
-fn post_execute_instr_seq(ctx: &mut Context) -> Result<(), ExecutionError> {
-    let mut results = Vec::new();
-    loop {
-        let entry = ctx.stack().peek_stack_entry()?;
-        use StackEntry::*;
-        match entry {
-            Value(_) => (),
-            Label(_) => break,
-            Frame(_) => unreachable!(), // @todo raise ExecutionError
-        }
-        let result = ctx.stack_mut().pop_value()?;
-        results.push(result);
-    }
-    ctx.stack_mut().pop_label()?;
-    while let Some(result) = results.pop() {
-        ctx.stack_mut().push_value(result)?;
-    }
-
-    Ok(())
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum ExecutionError {
     InstantiationFailure(String),
@@ -1425,12 +1404,31 @@ impl Executor {
         ctx: &mut Context,
         next_code_addr: Option<CodeAddr>,
     ) -> Result<(), ExecutionError> {
-        post_execute_instr_seq(ctx)?;
+        let mut results = Vec::new();
+        loop {
+            let entry = ctx.stack().peek_stack_entry()?;
+            use StackEntry::*;
+            match entry {
+                Value(_) => (),
+                Label(_) => break,
+                Frame(_) => unreachable!(), // @todo raise ExecutionError
+            }
+            let result = ctx.stack_mut().pop_value()?;
+            results.push(result);
+        }
+
+        ctx.stack_mut().pop_label()?;
+
+        while let Some(result) = results.pop() {
+            ctx.stack_mut().push_value(result)?;
+        }
+
         if let Some(next_code_addr) = next_code_addr {
             self.code_addr = next_code_addr;
         } else {
             self.code_addr += 1;
         }
+
         Ok(())
     }
 
