@@ -1697,10 +1697,6 @@ pub fn invoke(
     let return_size = funcinst.typ().return_type().len();
     assert_eq!(args.len(), funcinst.typ().param_type().len()); // @todo Err
 
-    let dummy_frame = Frame::new(Vec::new(), 0, None, None);
-    ctx.stack_mut().push_frame(dummy_frame.make_clone())?;
-    ctx.update_frame(dummy_frame.make_clone());
-
     for arg in args {
         ctx.stack_mut().push_value(arg)?;
     }
@@ -1713,9 +1709,6 @@ pub fn invoke(
         result_values.push(value);
     }
     result_values.reverse();
-
-    ctx.stack_mut().pop_frame()?;
-    ctx.update_frame(dummy_frame);
 
     ctx.stack().assert_stack_is_empty();
     Ok(WasmRunnerResult::Values(result_values))
