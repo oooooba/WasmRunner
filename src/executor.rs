@@ -1201,8 +1201,7 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     let param_size = 0;
     let return_size = 1;
 
-    let mut code = Vec::new();
-    instr_seq_to_code(expr.instr_seq(), &mut code);
+    let code = instr_seq_to_code(expr.instr_seq());
 
     let cont_addr = code.len();
     let label = Label::new(return_size, cont_addr);
@@ -1344,46 +1343,51 @@ enum Code {
     End(Option<CodeAddr>),
 }
 
-fn instr_seq_to_code(instr_seq: &InstrSeq, code: &mut Vec<Code>) {
-    for (i, instr) in instr_seq.instr_seq().iter().enumerate() {
-        match &instr.kind {
-            InstrKind::Nop => code.push(Code::Nop),
-            InstrKind::Unreachable => code.push(Code::Unreachable),
-            InstrKind::Block(blocktype, instr_seq) => {
-                let rewrite_index = code.len();
-                code.push(Code::Nop);
-                instr_seq_to_code(&instr_seq, code);
-                let cont_addr = code.len();
-                code[rewrite_index] = Code::Block(blocktype.clone(), cont_addr);
-            }
-            InstrKind::Loop(blocktype, instr_seq) => {
-                let cont_addr = code.len();
-                code.push(Code::Loop(blocktype.clone(), cont_addr));
-                instr_seq_to_code(&instr_seq, code);
-            }
-            InstrKind::If(blocktype, then_instr_seq, else_instr_seq) => {
-                let rewrite_index = code.len();
-                code.push(Code::Nop);
-                instr_seq_to_code(&then_instr_seq, code);
-                let then_end_index = code.len() - 1;
-                let else_addr = code.len();
-                instr_seq_to_code(&else_instr_seq, code);
-                let cont_addr = code.len();
-                code[rewrite_index] = Code::If(blocktype.clone(), else_addr, cont_addr);
-                code[then_end_index] = Code::End(Some(cont_addr));
-            }
-            InstrKind::Br(labelidx) => code.push(Code::Br(*labelidx)),
-            InstrKind::BrIf(labelidx) => code.push(Code::BrIf(*labelidx)),
-            InstrKind::BrTable(labelidxes, default_labelidx) => {
-                code.push(Code::BrTable(labelidxes.clone(), *default_labelidx))
-            }
-            InstrKind::Return => code.push(Code::Return),
-            InstrKind::Call(funcidx) => code.push(Code::Call(*funcidx)),
-            InstrKind::CallIndirect(typeidx) => code.push(Code::CallIndirect(*typeidx)),
-            _ => code.push(Code::Instr(instr_seq.make_clone(), i)),
-        };
+fn instr_seq_to_code(instr_seq: &InstrSeq) -> Vec<Code> {
+    fn instr_seq_to_code_helper(instr_seq: &InstrSeq, code: &mut Vec<Code>) {
+        for (i, instr) in instr_seq.instr_seq().iter().enumerate() {
+            match &instr.kind {
+                InstrKind::Nop => code.push(Code::Nop),
+                InstrKind::Unreachable => code.push(Code::Unreachable),
+                InstrKind::Block(blocktype, instr_seq) => {
+                    let rewrite_index = code.len();
+                    code.push(Code::Nop);
+                    instr_seq_to_code_helper(&instr_seq, code);
+                    let cont_addr = code.len();
+                    code[rewrite_index] = Code::Block(blocktype.clone(), cont_addr);
+                }
+                InstrKind::Loop(blocktype, instr_seq) => {
+                    let cont_addr = code.len();
+                    code.push(Code::Loop(blocktype.clone(), cont_addr));
+                    instr_seq_to_code_helper(&instr_seq, code);
+                }
+                InstrKind::If(blocktype, then_instr_seq, else_instr_seq) => {
+                    let rewrite_index = code.len();
+                    code.push(Code::Nop);
+                    instr_seq_to_code_helper(&then_instr_seq, code);
+                    let then_end_index = code.len() - 1;
+                    let else_addr = code.len();
+                    instr_seq_to_code_helper(&else_instr_seq, code);
+                    let cont_addr = code.len();
+                    code[rewrite_index] = Code::If(blocktype.clone(), else_addr, cont_addr);
+                    code[then_end_index] = Code::End(Some(cont_addr));
+                }
+                InstrKind::Br(labelidx) => code.push(Code::Br(*labelidx)),
+                InstrKind::BrIf(labelidx) => code.push(Code::BrIf(*labelidx)),
+                InstrKind::BrTable(labelidxes, default_labelidx) => {
+                    code.push(Code::BrTable(labelidxes.clone(), *default_labelidx))
+                }
+                InstrKind::Return => code.push(Code::Return),
+                InstrKind::Call(funcidx) => code.push(Code::Call(*funcidx)),
+                InstrKind::CallIndirect(typeidx) => code.push(Code::CallIndirect(*typeidx)),
+                _ => code.push(Code::Instr(instr_seq.make_clone(), i)),
+            };
+        }
+        code.push(Code::End(None));
     }
-    code.push(Code::End(None));
+    let mut code = Vec::new();
+    instr_seq_to_code_helper(instr_seq, &mut code);
+    code
 }
 
 struct Executor {
@@ -1648,8 +1652,7 @@ fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionErr
             let return_size = typ.return_type().len();
             let module = module.make_clone();
 
-            let mut code = Vec::new();
-            instr_seq_to_code(func.body().instr_seq(), &mut code);
+            let code = instr_seq_to_code(func.body().instr_seq());
 
             let cont_addr = code.len();
             let label = Label::new(return_size, cont_addr);
