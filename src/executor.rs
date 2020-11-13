@@ -1219,24 +1219,6 @@ fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
     Ok(result)
 }
 
-fn pre_execute_instr_seq(
-    ctx: &mut Context,
-    num_params: usize,
-    label: Label,
-) -> Result<(), ExecutionError> {
-    let mut args = Vec::new();
-    for _ in 0..num_params {
-        let arg = ctx.stack_mut().pop_value()?;
-        args.push(arg);
-    }
-    ctx.stack_mut().push_label(label)?;
-    while let Some(arg) = args.pop() {
-        ctx.stack_mut().push_value(arg)?;
-    }
-
-    Ok(())
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum ExecutionError {
     InstantiationFailure(String),
@@ -1394,8 +1376,20 @@ impl Executor {
         num_params: usize,
         label: Label,
     ) -> Result<(), ExecutionError> {
-        pre_execute_instr_seq(ctx, num_params, label)?;
+        let mut args = Vec::new();
+        for _ in 0..num_params {
+            let arg = ctx.stack_mut().pop_value()?;
+            args.push(arg);
+        }
+
+        ctx.stack_mut().push_label(label)?;
+
+        while let Some(arg) = args.pop() {
+            ctx.stack_mut().push_value(arg)?;
+        }
+
         self.code_addr = next_code_addr;
+
         Ok(())
     }
 
