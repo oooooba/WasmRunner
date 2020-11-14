@@ -255,40 +255,39 @@ impl Context {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum Control {
-    Fallthrough,
-}
-
-fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> {
-    use Control::*;
+fn execute_instr(
+    instr: &Instr,
+    stack: &mut Stack,
+    frame: &mut Frame,
+    store: &mut Store,
+) -> Result<(), ExecutionError> {
     use InstrKind::*;
     match &instr.kind {
-        ConstI32(c) => ctx.stack_mut().push_i32(*c).map(|_| Fallthrough),
-        ConstI64(c) => ctx.stack_mut().push_i64(*c).map(|_| Fallthrough),
-        ConstF32(c) => ctx.stack_mut().push_f32(*c).map(|_| Fallthrough),
-        ConstF64(c) => ctx.stack_mut().push_f64(*c).map(|_| Fallthrough),
+        ConstI32(c) => stack.push_i32(*c),
+        ConstI64(c) => stack.push_i64(*c),
+        ConstF32(c) => stack.push_f32(*c),
+        ConstF64(c) => stack.push_f64(*c),
 
         UnopI32(op) => {
-            let c = ctx.stack_mut().pop_i32()?;
+            let c = stack.pop_i32()?;
             let v = match op {
                 IUnopKind::Clz => c.leading_zeros(),
                 IUnopKind::Ctz => c.trailing_zeros(),
                 IUnopKind::Popcnt => c.count_ones(),
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
         UnopI64(op) => {
-            let c = ctx.stack_mut().pop_i64()?;
+            let c = stack.pop_i64()?;
             let v = match op {
                 IUnopKind::Clz => c.leading_zeros() as u64,
                 IUnopKind::Ctz => c.trailing_zeros() as u64,
                 IUnopKind::Popcnt => c.count_ones() as u64,
             };
-            ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
+            stack.push_i64(v)
         }
         UnopF32(op) => {
-            let c = ctx.stack_mut().pop_f32()?;
+            let c = stack.pop_f32()?;
             let v = match op {
                 FUnopKind::Abs => c.to_absolute_value().to_f32(),
                 FUnopKind::Neg => c.to_negated_value().to_f32(),
@@ -317,10 +316,10 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 FUnopKind::Sqrt => c.to_f32().sqrt(),
             };
             let v = F32Bytes::new(v);
-            ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+            stack.push_f32(v)
         }
         UnopF64(op) => {
-            let c = ctx.stack_mut().pop_f64()?;
+            let c = stack.pop_f64()?;
             let v = match op {
                 FUnopKind::Abs => c.to_absolute_value().to_f64(),
                 FUnopKind::Neg => c.to_negated_value().to_f64(),
@@ -349,25 +348,23 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 FUnopKind::Sqrt => c.to_f64().sqrt(),
             };
             let v = F64Bytes::new(v);
-            ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
+            stack.push_f64(v)
         }
 
         Extend(kind) => {
             let value_kind = match kind {
-                ExtendKind::I32As8S => ValueKind::I32(ctx.stack_mut().pop_i32()? as i8 as u32),
-                ExtendKind::I32As16S => ValueKind::I32(ctx.stack_mut().pop_i32()? as i16 as u32),
-                ExtendKind::I64As8S => ValueKind::I64(ctx.stack_mut().pop_i64()? as i8 as u64),
-                ExtendKind::I64As16S => ValueKind::I64(ctx.stack_mut().pop_i64()? as i16 as u64),
-                ExtendKind::I64As32S => ValueKind::I64(ctx.stack_mut().pop_i64()? as i32 as u64),
+                ExtendKind::I32As8S => ValueKind::I32(stack.pop_i32()? as i8 as u32),
+                ExtendKind::I32As16S => ValueKind::I32(stack.pop_i32()? as i16 as u32),
+                ExtendKind::I64As8S => ValueKind::I64(stack.pop_i64()? as i8 as u64),
+                ExtendKind::I64As16S => ValueKind::I64(stack.pop_i64()? as i16 as u64),
+                ExtendKind::I64As32S => ValueKind::I64(stack.pop_i64()? as i32 as u64),
             };
-            ctx.stack_mut()
-                .push_value(Value::new(value_kind))
-                .map(|_| Fallthrough)
+            stack.push_value(Value::new(value_kind))
         }
 
         BinopI32(op) => {
-            let c2 = ctx.stack_mut().pop_i32()?;
-            let c1 = ctx.stack_mut().pop_i32()?;
+            let c2 = stack.pop_i32()?;
+            let c1 = stack.pop_i32()?;
             let v = match op {
                 IBinopKind::Add => c1.wrapping_add(c2),
                 IBinopKind::Sub => c1.wrapping_sub(c2),
@@ -414,11 +411,11 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 IBinopKind::Rotl => c1.rotate_left(c2 % 32),
                 IBinopKind::Rotr => c1.rotate_right(c2 % 32),
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
         BinopI64(op) => {
-            let c2 = ctx.stack_mut().pop_i64()?;
-            let c1 = ctx.stack_mut().pop_i64()?;
+            let c2 = stack.pop_i64()?;
+            let c1 = stack.pop_i64()?;
             let v = match op {
                 IBinopKind::Add => c1.wrapping_add(c2),
                 IBinopKind::Sub => c1.wrapping_sub(c2),
@@ -465,11 +462,11 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 IBinopKind::Rotl => c1.rotate_left((c2 % 64) as u32),
                 IBinopKind::Rotr => c1.rotate_right((c2 % 64) as u32),
             };
-            ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
+            stack.push_i64(v)
         }
         BinopF32(op) => {
-            let c2 = ctx.stack_mut().pop_f32()?;
-            let c1 = ctx.stack_mut().pop_f32()?;
+            let c2 = stack.pop_f32()?;
+            let c1 = stack.pop_f32()?;
             let v = match op {
                 FBinopKind::Add => c1.to_f32() + c2.to_f32(),
                 FBinopKind::Sub => c1.to_f32() - c2.to_f32(),
@@ -508,11 +505,11 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 }
             };
             let v = F32Bytes::new(v);
-            ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+            stack.push_f32(v)
         }
         BinopF64(op) => {
-            let c2 = ctx.stack_mut().pop_f64()?;
-            let c1 = ctx.stack_mut().pop_f64()?;
+            let c2 = stack.pop_f64()?;
+            let c1 = stack.pop_f64()?;
             let v = match op {
                 FBinopKind::Add => c1.to_f64() + c2.to_f64(),
                 FBinopKind::Sub => c1.to_f64() - c2.to_f64(),
@@ -551,29 +548,29 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 }
             };
             let v = F64Bytes::new(v);
-            ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
+            stack.push_f64(v)
         }
 
         TestopI32(op) => {
-            let c = ctx.stack_mut().pop_i32()?;
+            let c = stack.pop_i32()?;
             let v = match op {
                 TestopKind::Eqz if c == 0 => 1,
                 TestopKind::Eqz => 0,
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
         TestopI64(op) => {
-            let c = ctx.stack_mut().pop_i64()?;
+            let c = stack.pop_i64()?;
             let v = match op {
                 TestopKind::Eqz if c == 0 => 1,
                 TestopKind::Eqz => 0,
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
 
         RelopI32(op) => {
-            let c2 = ctx.stack_mut().pop_i32()?;
-            let c1 = ctx.stack_mut().pop_i32()?;
+            let c2 = stack.pop_i32()?;
+            let c1 = stack.pop_i32()?;
             let v = match op {
                 IRelopKind::Eq if c1 == c2 => 1,
                 IRelopKind::Ne if c1 != c2 => 1,
@@ -587,11 +584,11 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 IRelopKind::GeU if c1 >= c2 => 1,
                 _ => 0,
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
         RelopI64(op) => {
-            let c2 = ctx.stack_mut().pop_i64()?;
-            let c1 = ctx.stack_mut().pop_i64()?;
+            let c2 = stack.pop_i64()?;
+            let c1 = stack.pop_i64()?;
             let v = match op {
                 IRelopKind::Eq if c1 == c2 => 1,
                 IRelopKind::Ne if c1 != c2 => 1,
@@ -605,11 +602,11 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 IRelopKind::GeU if c1 >= c2 => 1,
                 _ => 0,
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
         RelopF32(op) => {
-            let c2 = ctx.stack_mut().pop_f32()?;
-            let c1 = ctx.stack_mut().pop_f32()?;
+            let c2 = stack.pop_f32()?;
+            let c1 = stack.pop_f32()?;
             let v = match op {
                 FRelopKind::Eq if c1.is_nan() || c2.is_nan() => 0,
                 FRelopKind::Eq if c1.is_positive_zero() && c2.is_negative_zero() => 1,
@@ -633,11 +630,11 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 FRelopKind::Ge if c1.to_f32() >= c2.to_f32() => 1,
                 _ => 0,
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
         RelopF64(op) => {
-            let c2 = ctx.stack_mut().pop_f64()?;
-            let c1 = ctx.stack_mut().pop_f64()?;
+            let c2 = stack.pop_f64()?;
+            let c1 = stack.pop_f64()?;
             let v = match op {
                 FRelopKind::Eq if c1.is_nan() || c2.is_nan() => 0,
                 FRelopKind::Eq if c1.is_positive_zero() && c2.is_negative_zero() => 1,
@@ -661,18 +658,16 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 FRelopKind::Ge if c1.to_f64() >= c2.to_f64() => 1,
                 _ => 0,
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
 
         Cvtop(op) => {
             let value_kind = match op {
-                CvtopKind::I32WrapI64 => ValueKind::I32(ctx.stack_mut().pop_i64()? as u32),
-                CvtopKind::I64ExtendI32S => {
-                    ValueKind::I64(ctx.stack_mut().pop_i32()? as i32 as i64 as u64)
-                }
-                CvtopKind::I64ExtendI32U => ValueKind::I64(ctx.stack_mut().pop_i32()? as u64),
+                CvtopKind::I32WrapI64 => ValueKind::I32(stack.pop_i64()? as u32),
+                CvtopKind::I64ExtendI32S => ValueKind::I64(stack.pop_i32()? as i32 as i64 as u64),
+                CvtopKind::I64ExtendI32U => ValueKind::I64(stack.pop_i32()? as u64),
                 CvtopKind::I32TruncF32S => {
-                    let v = ctx.stack_mut().pop_f32()?;
+                    let v = stack.pop_f32()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -686,7 +681,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v as i32 as u32)
                 }
                 CvtopKind::I32TruncF32U => {
-                    let v = ctx.stack_mut().pop_f32()?;
+                    let v = stack.pop_f32()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -700,7 +695,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v as u32)
                 }
                 CvtopKind::I32TruncF64S => {
-                    let v = ctx.stack_mut().pop_f64()?;
+                    let v = stack.pop_f64()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -714,7 +709,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v as i32 as u32)
                 }
                 CvtopKind::I32TruncF64U => {
-                    let v = ctx.stack_mut().pop_f64()?;
+                    let v = stack.pop_f64()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -728,7 +723,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v as u32)
                 }
                 CvtopKind::I64TruncF32S => {
-                    let v = ctx.stack_mut().pop_f32()?;
+                    let v = stack.pop_f32()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -742,7 +737,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v as i64 as u64)
                 }
                 CvtopKind::I64TruncF32U => {
-                    let v = ctx.stack_mut().pop_f32()?;
+                    let v = stack.pop_f32()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -756,7 +751,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v as u64)
                 }
                 CvtopKind::I64TruncF64S => {
-                    let v = ctx.stack_mut().pop_f64()?;
+                    let v = stack.pop_f64()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -770,7 +765,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v as i64 as u64)
                 }
                 CvtopKind::I64TruncF64U => {
-                    let v = ctx.stack_mut().pop_f64()?;
+                    let v = stack.pop_f64()?;
                     if v.is_infinite() {
                         return Err(ExecutionError::IntegerOverflow);
                     }
@@ -784,7 +779,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v as u64)
                 }
                 CvtopKind::I32TruncSatF32S => {
-                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = stack.pop_f32()?.to_f32();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -803,7 +798,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v as u32)
                 }
                 CvtopKind::I32TruncSatF32U => {
-                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = stack.pop_f32()?.to_f32();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -822,7 +817,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v)
                 }
                 CvtopKind::I32TruncSatF64S => {
-                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = stack.pop_f64()?.to_f64();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -841,7 +836,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v as u32)
                 }
                 CvtopKind::I32TruncSatF64U => {
-                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = stack.pop_f64()?.to_f64();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -860,7 +855,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I32(v)
                 }
                 CvtopKind::I64TruncSatF32S => {
-                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = stack.pop_f32()?.to_f32();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -879,7 +874,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v as u64)
                 }
                 CvtopKind::I64TruncSatF32U => {
-                    let v = ctx.stack_mut().pop_f32()?.to_f32();
+                    let v = stack.pop_f32()?.to_f32();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -898,7 +893,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v)
                 }
                 CvtopKind::I64TruncSatF64S => {
-                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = stack.pop_f64()?.to_f64();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -917,7 +912,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v as u64)
                 }
                 CvtopKind::I64TruncSatF64U => {
-                    let v = ctx.stack_mut().pop_f64()?.to_f64();
+                    let v = stack.pop_f64()?.to_f64();
                     let v = if v.is_nan() {
                         0
                     } else if v.is_infinite() {
@@ -936,31 +931,23 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::I64(v)
                 }
                 CvtopKind::F32ConvertI32S => {
-                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i32()? as i32 as f32))
+                    ValueKind::F32(F32Bytes::new(stack.pop_i32()? as i32 as f32))
                 }
-                CvtopKind::F32ConvertI32U => {
-                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i32()? as f32))
-                }
+                CvtopKind::F32ConvertI32U => ValueKind::F32(F32Bytes::new(stack.pop_i32()? as f32)),
                 CvtopKind::F32ConvertI64S => {
-                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i64()? as i64 as f32))
+                    ValueKind::F32(F32Bytes::new(stack.pop_i64()? as i64 as f32))
                 }
-                CvtopKind::F32ConvertI64U => {
-                    ValueKind::F32(F32Bytes::new(ctx.stack_mut().pop_i64()? as f32))
-                }
+                CvtopKind::F32ConvertI64U => ValueKind::F32(F32Bytes::new(stack.pop_i64()? as f32)),
                 CvtopKind::F64ConvertI32S => {
-                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i32()? as i32 as f64))
+                    ValueKind::F64(F64Bytes::new(stack.pop_i32()? as i32 as f64))
                 }
-                CvtopKind::F64ConvertI32U => {
-                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i32()? as f64))
-                }
+                CvtopKind::F64ConvertI32U => ValueKind::F64(F64Bytes::new(stack.pop_i32()? as f64)),
                 CvtopKind::F64ConvertI64S => {
-                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i64()? as i64 as f64))
+                    ValueKind::F64(F64Bytes::new(stack.pop_i64()? as i64 as f64))
                 }
-                CvtopKind::F64ConvertI64U => {
-                    ValueKind::F64(F64Bytes::new(ctx.stack_mut().pop_i64()? as f64))
-                }
+                CvtopKind::F64ConvertI64U => ValueKind::F64(F64Bytes::new(stack.pop_i64()? as f64)),
                 CvtopKind::F32DemoteF64 => {
-                    let v = ctx.stack_mut().pop_f64()?;
+                    let v = stack.pop_f64()?;
                     let v = if v.is_nan() {
                         f32::NAN
                     } else {
@@ -969,7 +956,7 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::F32(F32Bytes::new(v))
                 }
                 CvtopKind::F64PromoteF32 => {
-                    let v = ctx.stack_mut().pop_f32()?;
+                    let v = stack.pop_f32()?;
                     let v = if v.is_nan() {
                         f64::NAN
                     } else {
@@ -978,64 +965,62 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                     ValueKind::F64(F64Bytes::new(v))
                 }
                 CvtopKind::I32ReinterpretF32 => {
-                    ValueKind::I32(u32::from_le_bytes(ctx.stack_mut().pop_f32()?.to_bytes()))
+                    ValueKind::I32(u32::from_le_bytes(stack.pop_f32()?.to_bytes()))
                 }
                 CvtopKind::I64ReinterpretF64 => {
-                    ValueKind::I64(u64::from_le_bytes(ctx.stack_mut().pop_f64()?.to_bytes()))
+                    ValueKind::I64(u64::from_le_bytes(stack.pop_f64()?.to_bytes()))
                 }
-                CvtopKind::F32ReinterpretI32 => ValueKind::F32(F32Bytes::from_bytes(
-                    ctx.stack_mut().pop_i32()?.to_le_bytes(),
-                )),
-                CvtopKind::F64ReinterpretI64 => ValueKind::F64(F64Bytes::from_bytes(
-                    ctx.stack_mut().pop_i64()?.to_le_bytes(),
-                )),
+                CvtopKind::F32ReinterpretI32 => {
+                    ValueKind::F32(F32Bytes::from_bytes(stack.pop_i32()?.to_le_bytes()))
+                }
+                CvtopKind::F64ReinterpretI64 => {
+                    ValueKind::F64(F64Bytes::from_bytes(stack.pop_i64()?.to_le_bytes()))
+                }
             };
-            ctx.stack_mut()
-                .push_value(Value::new(value_kind))
-                .map(|_| Fallthrough)
+            stack.push_value(Value::new(value_kind))
         }
 
-        Drop => ctx.stack_mut().pop_value().map(|_| Fallthrough),
+        Drop => stack.pop_value().map(|_| ()),
         Select => {
-            let c = ctx.stack_mut().pop_i32()?;
-            let val2 = ctx.stack_mut().pop_value()?;
-            let val1 = ctx.stack_mut().pop_value()?;
+            let c = stack.pop_i32()?;
+            let val2 = stack.pop_value()?;
+            let val1 = stack.pop_value()?;
             let val = if c != 0 { val1 } else { val2 };
-            ctx.stack_mut().push_value(val).map(|_| Fallthrough)
+            stack.push_value(val)
         }
 
         GetLocal(idx) => {
-            let v = ctx.current_frame().get(*idx)?;
-            ctx.stack_mut().push_value(v).map(|_| Fallthrough)
+            let v = frame.get(*idx)?;
+            stack.push_value(v)
         }
         SetLocal(idx) => {
-            let v = ctx.stack_mut().pop_value()?;
-            ctx.current_frame_mut().set(*idx, v).map(|_| Fallthrough)
+            let v = stack.pop_value()?;
+            frame.set(*idx, v)
         }
         TeeLocal(idx) => {
-            let v = ctx.stack_mut().pop_value()?;
-            ctx.stack_mut().push_value(v).map(|_| Fallthrough)?;
-            ctx.current_frame_mut().set(*idx, v).map(|_| Fallthrough)
+            let v = stack.pop_value()?;
+            stack.push_value(v)?;
+            frame.set(*idx, v)
         }
         GetGlobal(idx) => {
-            let globaladdr = ctx.current_frame().resolve_globaladdr(*idx)?;
-            let globalinst = &ctx.store.globals()[globaladdr.to_usize()];
+            let globaladdr = frame.resolve_globaladdr(*idx)?;
+            let globalinst = &store.globals()[globaladdr.to_usize()];
             let v = globalinst.value();
-            ctx.stack_mut().push_value(v).map(|_| Fallthrough)
+            stack.push_value(v)
         }
         SetGlobal(idx) => {
-            let v = ctx.stack_mut().pop_value()?;
-            let globaladdr = ctx.current_frame().resolve_globaladdr(*idx)?;
-            let globalinst = &mut ctx.store.globals_mut()[globaladdr.to_usize()];
+            let v = stack.pop_value()?;
+            let globaladdr = frame.resolve_globaladdr(*idx)?;
+            let globalinst = &mut store.globals_mut()[globaladdr.to_usize()];
             globalinst.update_value(v);
-            Ok(Fallthrough)
+            Ok(())
         }
 
         LoadI32(opt, memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let meminst = &store.mems()[memaddr.to_usize()];
             let v = match opt {
                 None => meminst.read_i32(ea)?,
                 Some(LoadI32Opt::S8) => meminst.read_i8(ea)? as i8 as i32 as u32,
@@ -1043,13 +1028,13 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 Some(LoadI32Opt::S16) => meminst.read_i16(ea)? as i16 as i32 as u32,
                 Some(LoadI32Opt::U16) => meminst.read_i16(ea)? as u32,
             };
-            ctx.stack_mut().push_i32(v).map(|_| Fallthrough)
+            stack.push_i32(v)
         }
         LoadI64(opt, memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let meminst = &store.mems()[memaddr.to_usize()];
             let v = match opt {
                 None => meminst.read_i64(ea)?,
                 Some(LoadI64Opt::S8) => meminst.read_i8(ea)? as i8 as i64 as u64,
@@ -1059,79 +1044,79 @@ fn execute(instr: &Instr, ctx: &mut Context) -> Result<Control, ExecutionError> 
                 Some(LoadI64Opt::S32) => meminst.read_i32(ea)? as i32 as i64 as u64,
                 Some(LoadI64Opt::U32) => meminst.read_i32(ea)? as u64,
             };
-            ctx.stack_mut().push_i64(v).map(|_| Fallthrough)
+            stack.push_i64(v)
         }
         LoadF32(memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let meminst = &store.mems()[memaddr.to_usize()];
             let v = meminst.read_f32(ea)?;
-            ctx.stack_mut().push_f32(v).map(|_| Fallthrough)
+            stack.push_f32(v)
         }
         LoadF64(memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &ctx.store.mems()[memaddr.to_usize()];
+            let meminst = &store.mems()[memaddr.to_usize()];
             let v = meminst.read_f64(ea)?;
-            ctx.stack_mut().push_f64(v).map(|_| Fallthrough)
+            stack.push_f64(v)
         }
 
         StoreI32(opt, memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let v = ctx.stack_mut().pop_i32()?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let v = stack.pop_i32()?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            let meminst = &mut store.mems_mut()[memaddr.to_usize()];
             match opt {
-                None => meminst.write_i32(ea, v).map(|_| Fallthrough),
-                Some(StoreI32Opt::L8) => meminst.write_i8(ea, v as u8).map(|_| Fallthrough),
-                Some(StoreI32Opt::L16) => meminst.write_i16(ea, v as u16).map(|_| Fallthrough),
+                None => meminst.write_i32(ea, v),
+                Some(StoreI32Opt::L8) => meminst.write_i8(ea, v as u8),
+                Some(StoreI32Opt::L16) => meminst.write_i16(ea, v as u16),
             }
         }
         StoreI64(opt, memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let v = ctx.stack_mut().pop_i64()?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let v = stack.pop_i64()?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            let meminst = &mut store.mems_mut()[memaddr.to_usize()];
             match opt {
-                None => meminst.write_i64(ea, v).map(|_| Fallthrough),
-                Some(StoreI64Opt::L8) => meminst.write_i8(ea, v as u8).map(|_| Fallthrough),
-                Some(StoreI64Opt::L16) => meminst.write_i16(ea, v as u16).map(|_| Fallthrough),
-                Some(StoreI64Opt::L32) => meminst.write_i32(ea, v as u32).map(|_| Fallthrough),
+                None => meminst.write_i64(ea, v),
+                Some(StoreI64Opt::L8) => meminst.write_i8(ea, v as u8),
+                Some(StoreI64Opt::L16) => meminst.write_i16(ea, v as u16),
+                Some(StoreI64Opt::L32) => meminst.write_i32(ea, v as u32),
             }
         }
         StoreF32(memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let v = ctx.stack_mut().pop_f32()?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let v = stack.pop_f32()?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
-            meminst.write_f32(ea, v).map(|_| Fallthrough)
+            let meminst = &mut store.mems_mut()[memaddr.to_usize()];
+            meminst.write_f32(ea, v)
         }
         StoreF64(memarg) => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let v = ctx.stack_mut().pop_f64()?;
-            let i = ctx.stack_mut().pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let v = stack.pop_f64()?;
+            let i = stack.pop_i32()? as usize;
             let ea = (memarg.offset() as usize) + i;
-            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
-            meminst.write_f64(ea, v).map(|_| Fallthrough)
+            let meminst = &mut store.mems_mut()[memaddr.to_usize()];
+            meminst.write_f64(ea, v)
         }
         MemorySize => {
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let meminst = &mut store.mems_mut()[memaddr.to_usize()];
             let result = meminst.size_in_page();
             assert!(result <= (u32::MAX as usize));
-            ctx.stack_mut().push_i32(result as u32).map(|_| Fallthrough)
+            stack.push_i32(result as u32)
         }
         MemoryGrow => {
-            let n = ctx.stack_mut().pop_i32()? as usize;
-            let memaddr = ctx.current_frame().resolve_memaddr(Memidx::new(0))?;
-            let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
+            let n = stack.pop_i32()? as usize;
+            let memaddr = frame.resolve_memaddr(Memidx::new(0))?;
+            let meminst = &mut store.mems_mut()[memaddr.to_usize()];
             let result = meminst.grow(n)?.unwrap_or(u32::MAX);
-            ctx.stack_mut().push_i32(result).map(|_| Fallthrough)
+            stack.push_i32(result)
         }
 
         _ => unreachable!("{:?}", instr),
@@ -1540,8 +1525,12 @@ impl Executor {
             use Code::*;
             match code {
                 Instr(instr_seq, index) => {
-                    let ctrl = execute(&instr_seq.instr_seq()[*index], ctx)?;
-                    assert_eq!(ctrl, Control::Fallthrough);
+                    execute_instr(
+                        &instr_seq.instr_seq()[*index],
+                        &mut ctx.stack,
+                        &mut ctx.current_frame,
+                        &mut ctx.store,
+                    )?;
                     self.code_addr += 1;
                 }
                 Nop => {
