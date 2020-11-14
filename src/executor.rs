@@ -187,6 +187,7 @@ pub struct Context {
     stack: Stack,
     current_frame: Frame,
     dummy_frame: Frame,
+    code_addr: CodeAddr,
 }
 
 impl Context {
@@ -197,6 +198,7 @@ impl Context {
             stack: Stack::new(),
             current_frame: dummy_frame.make_clone(),
             dummy_frame,
+            code_addr: 0,
         }
     }
 
@@ -223,6 +225,18 @@ impl Context {
 
     pub fn update_frame(&mut self, frame: Frame) {
         self.current_frame = frame;
+    }
+
+    pub fn code_addr(&self) -> CodeAddr {
+        self.code_addr
+    }
+
+    pub fn update_code_addr(&mut self, code_addr: CodeAddr) {
+        self.code_addr = code_addr
+    }
+
+    pub fn increment_code_addr(&mut self) {
+        self.code_addr += 1;
     }
 
     pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
@@ -1339,17 +1353,17 @@ fn instr_seq_to_code(instr_seq: &InstrSeq) -> Vec<Code> {
 
 struct Executor {
     code: Vec<Code>,
-    code_addr: CodeAddr,
 }
 
 impl Executor {
     fn new(code: Vec<Code>) -> Self {
-        Self { code, code_addr: 0 }
+        Self { code }
     }
 
-    fn current_code(&self) -> Option<&Code> {
-        if self.code_addr < self.code.len() {
-            Some(&self.code[self.code_addr])
+    fn current_code(&self, ctx: &Context) -> Option<&Code> {
+        let code_addr = ctx.code_addr();
+        if code_addr < self.code.len() {
+            Some(&self.code[code_addr])
         } else {
             None
         }
@@ -1374,7 +1388,7 @@ impl Executor {
             ctx.stack_mut().push_value(arg)?;
         }
 
-        self.code_addr = next_code_addr;
+        ctx.update_code_addr(next_code_addr);
 
         Ok(())
     }
@@ -1404,9 +1418,9 @@ impl Executor {
         }
 
         if let Some(next_code_addr) = next_code_addr {
-            self.code_addr = next_code_addr;
+            ctx.update_code_addr(next_code_addr);
         } else {
-            self.code_addr += 1;
+            ctx.increment_code_addr();
         }
 
         Ok(())
@@ -1447,7 +1461,7 @@ impl Executor {
         while let Some(value) = values.pop() {
             ctx.stack_mut().push_value(value)?;
         }
-        self.code_addr = label.cont_addr();
+        ctx.update_code_addr(label.cont_addr());
 
         Ok(())
     }
@@ -1541,7 +1555,7 @@ impl Executor {
                 let cont_addr = code.len();
                 let label = Label::new(return_size, cont_addr);
 
-                let prev_code_addr = self.code_addr;
+                let prev_code_addr = ctx.code_addr();
                 mem::swap(&mut self.code, &mut code);
 
                 let next_code_addr = 0;
@@ -1549,7 +1563,7 @@ impl Executor {
                 self.enter_block(ctx, next_code_addr, 0, label)?;
                 self.execute(ctx)?;
 
-                self.code_addr = prev_code_addr;
+                ctx.update_code_addr(prev_code_addr);
                 mem::swap(&mut self.code, &mut code);
             }
 
@@ -1577,7 +1591,7 @@ impl Executor {
     }
 
     fn execute(&mut self, ctx: &mut Context) -> Result<(), ExecutionError> {
-        while let Some(code) = self.current_code() {
+        while let Some(code) = self.current_code(ctx) {
             use Code::*;
             match code {
                 Instr(instr_seq, index) => {
@@ -1587,10 +1601,10 @@ impl Executor {
                         &mut ctx.current_frame,
                         &mut ctx.store,
                     )?;
-                    self.code_addr += 1;
+                    ctx.increment_code_addr();
                 }
                 Nop => {
-                    self.code_addr += 1;
+                    ctx.increment_code_addr();
                 }
                 Unreachable => return Err(ExecutionError::ExplicitTrap),
                 Block(blocktype, cont_addr) => {
@@ -1598,14 +1612,14 @@ impl Executor {
                     let num_params = blocktype.param_type().len();
                     let num_returns = blocktype.return_type().len();
                     let label = Label::new(num_returns, *cont_addr);
-                    let next_code_addr = self.code_addr + 1;
+                    let next_code_addr = ctx.code_addr() + 1;
                     self.enter_block(ctx, next_code_addr, num_params, label)?;
                 }
                 Loop(blocktype, cont_addr) => {
                     let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
                     let num_params = blocktype.param_type().len();
                     let label = Label::new(num_params, *cont_addr);
-                    let next_code_addr = self.code_addr + 1;
+                    let next_code_addr = ctx.code_addr() + 1;
                     self.enter_block(ctx, next_code_addr, num_params, label)?;
                 }
                 If(blocktype, else_addr, cont_addr) => {
@@ -1615,7 +1629,7 @@ impl Executor {
                     let label = Label::new(num_returns, *cont_addr);
                     let cond = ctx.stack_mut().pop_i32()?;
                     let next_code_addr = if cond != 0 {
-                        self.code_addr + 1
+                        ctx.code_addr() + 1
                     } else {
                         *else_addr
                     };
@@ -1631,7 +1645,7 @@ impl Executor {
                         let labelidx = *labelidx;
                         self.branch(labelidx, ctx)?;
                     } else {
-                        self.code_addr += 1;
+                        ctx.increment_code_addr();
                     }
                 }
                 BrTable(labelidxes, default_labelidx) => {
@@ -1647,7 +1661,7 @@ impl Executor {
                 Call(funcidx) => {
                     let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
                     self.invoke_function(ctx, funcaddr)?;
-                    self.code_addr += 1;
+                    ctx.increment_code_addr();
                 }
                 CallIndirect(typeidx) => {
                     let tableaddr = ctx.current_frame().resolve_tableaddr(Tableidx::new(0))?;
@@ -1666,7 +1680,7 @@ impl Executor {
                         return Err(ExecutionError::IndirectCallTypeMismatch);
                     }
                     self.invoke_function(ctx, funcaddr)?;
-                    self.code_addr += 1;
+                    ctx.increment_code_addr();
                 }
                 End(next_code_addr) => {
                     let next_code_addr = *next_code_addr;
