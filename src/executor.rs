@@ -1,4 +1,5 @@
 use std::fmt;
+use std::mem;
 
 use crate::frame::*;
 use crate::instance::*;
@@ -1520,6 +1521,61 @@ impl Executor {
         Ok(())
     }
 
+    fn invoke_function(
+        &mut self,
+        ctx: &mut Context,
+        funcaddr: Funcaddr,
+    ) -> Result<(), ExecutionError> {
+        let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
+
+        match funcinst {
+            Funcinst::UserDefined { typ, module, code } => {
+                let func = code.make_clone();
+
+                let param_size = typ.param_type().len();
+                let return_size = typ.return_type().len();
+                let module = module.make_clone();
+
+                let mut code = instr_seq_to_code(func.body().instr_seq());
+
+                let cont_addr = code.len();
+                let label = Label::new(return_size, cont_addr);
+
+                let prev_code_addr = self.code_addr;
+                mem::swap(&mut self.code, &mut code);
+
+                let next_code_addr = 0;
+                self.enter_function(ctx, Some(module), param_size, return_size, func.locals())?;
+                self.enter_block(ctx, next_code_addr, 0, label)?;
+                self.execute(ctx)?;
+
+                self.code_addr = prev_code_addr;
+                mem::swap(&mut self.code, &mut code);
+            }
+
+            Funcinst::Host { typ, hostcode } => {
+                let param_size = typ.param_type().len();
+                let func = hostcode.code();
+
+                let mut params = Vec::new();
+                for _ in 0..param_size {
+                    let val = ctx.stack_mut().pop_value()?;
+                    params.push(val);
+                }
+                params.reverse();
+
+                let WasmRunnerResult::Values(mut result) = func(params)?;
+                result.reverse();
+
+                while let Some(ret) = result.pop() {
+                    ctx.stack_mut().push_value(ret)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn execute(&mut self, ctx: &mut Context) -> Result<(), ExecutionError> {
         while let Some(code) = self.current_code() {
             use Code::*;
@@ -1590,7 +1646,7 @@ impl Executor {
                 Return => return self.exit_function(ctx),
                 Call(funcidx) => {
                     let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
-                    invoke_func(ctx, funcaddr)?;
+                    self.invoke_function(ctx, funcaddr)?;
                     self.code_addr += 1;
                 }
                 CallIndirect(typeidx) => {
@@ -1609,7 +1665,7 @@ impl Executor {
                     if typ != f.typ() {
                         return Err(ExecutionError::IndirectCallTypeMismatch);
                     }
-                    invoke_func(ctx, funcaddr)?;
+                    self.invoke_function(ctx, funcaddr)?;
                     self.code_addr += 1;
                 }
                 End(next_code_addr) => {
@@ -1620,52 +1676,6 @@ impl Executor {
         }
         self.exit_function(ctx)
     }
-}
-
-fn invoke_func(ctx: &mut Context, funcaddr: Funcaddr) -> Result<(), ExecutionError> {
-    let funcinst = &ctx.store.funcs()[funcaddr.to_usize()];
-
-    match funcinst {
-        Funcinst::UserDefined { typ, module, code } => {
-            let func = code.make_clone();
-
-            let param_size = typ.param_type().len();
-            let return_size = typ.return_type().len();
-            let module = module.make_clone();
-
-            let code = instr_seq_to_code(func.body().instr_seq());
-
-            let cont_addr = code.len();
-            let label = Label::new(return_size, cont_addr);
-
-            let next_code_addr = 0;
-            let mut executor = Executor::new(code);
-            executor.enter_function(ctx, Some(module), param_size, return_size, func.locals())?;
-            executor.enter_block(ctx, next_code_addr, 0, label)?;
-            executor.execute(ctx)?;
-        }
-
-        Funcinst::Host { typ, hostcode } => {
-            let param_size = typ.param_type().len();
-            let func = hostcode.code();
-
-            let mut params = Vec::new();
-            for _ in 0..param_size {
-                let val = ctx.stack_mut().pop_value()?;
-                params.push(val);
-            }
-            params.reverse();
-
-            let WasmRunnerResult::Values(mut result) = func(params)?;
-            result.reverse();
-
-            while let Some(ret) = result.pop() {
-                ctx.stack_mut().push_value(ret)?;
-            }
-        }
-    }
-
-    Ok(())
 }
 
 pub fn invoke(
@@ -1682,7 +1692,8 @@ pub fn invoke(
         ctx.stack_mut().push_value(arg)?;
     }
 
-    invoke_func(ctx, funcaddr)?;
+    let mut executor = Executor::new(Vec::new());
+    executor.invoke_function(ctx, funcaddr)?;
 
     let mut result_values = Vec::new();
     for _ in 0..return_size {
