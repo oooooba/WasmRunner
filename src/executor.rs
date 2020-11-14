@@ -1331,11 +1331,15 @@ fn instr_seq_to_code(instr_seq: &InstrSeq) -> Vec<Code> {
 
 struct Executor {
     code: Vec<Code>,
+    code_stack: Vec<Vec<Code>>, // @todo fix to manage Code  in Context
 }
 
 impl Executor {
     fn new() -> Self {
-        Self { code: Vec::new() }
+        Self {
+            code: Vec::new(),
+            code_stack: Vec::new(),
+        }
     }
 
     fn current_code(&self, ctx: &Context) -> Option<&Code> {
@@ -1451,6 +1455,7 @@ impl Executor {
         param_size: usize,
         return_size: usize,
         local_var_types: &[Valtype],
+        mut code: Vec<Code>,
         return_code_addr: CodeAddr,
     ) -> Result<(), ExecutionError> {
         if param_size + local_var_types.len() > u32::MAX as usize {
@@ -1491,6 +1496,9 @@ impl Executor {
         ctx.stack_mut().push_frame(frame.make_clone())?;
         ctx.update_frame(frame);
 
+        mem::swap(&mut self.code, &mut code);
+        self.code_stack.push(code);
+
         Ok(())
     }
 
@@ -1519,6 +1527,9 @@ impl Executor {
             ctx.stack_mut().push_value(ret)?;
         }
 
+        let mut prev_code = self.code_stack.pop().unwrap();
+        mem::swap(&mut self.code, &mut prev_code);
+
         Ok(())
     }
 
@@ -1533,8 +1544,7 @@ impl Executor {
         let label = Label::new(return_size, cont_addr);
         let next_code_addr = 0;
 
-        self.code = code;
-        self.enter_function(ctx, None, param_size, return_size, &[], cont_addr)?;
+        self.enter_function(ctx, None, param_size, return_size, &[], code, cont_addr)?;
         self.enter_block(ctx, next_code_addr, 0, label)?;
         self.execute(ctx)?;
 
@@ -1560,13 +1570,12 @@ impl Executor {
                 let return_size = typ.return_type().len();
                 let module = module.make_clone();
 
-                let mut code = instr_seq_to_code(func.body().instr_seq());
+                let code = instr_seq_to_code(func.body().instr_seq());
 
                 let cont_addr = code.len();
                 let label = Label::new(return_size, cont_addr);
 
                 let return_code_addr = ctx.code_addr() + 1;
-                mem::swap(&mut self.code, &mut code);
 
                 let next_code_addr = 0;
                 self.enter_function(
@@ -1575,12 +1584,11 @@ impl Executor {
                     param_size,
                     return_size,
                     func.locals(),
+                    code,
                     return_code_addr,
                 )?;
                 self.enter_block(ctx, next_code_addr, 0, label)?;
                 self.execute(ctx)?;
-
-                mem::swap(&mut self.code, &mut code);
             }
 
             Funcinst::Host { typ, hostcode } => {
