@@ -14,6 +14,7 @@ struct FrameInner {
     module: Option<Moduleinst>,
     num_result: usize,
     prev_frame: Option<Frame>,
+    return_code_addr: CodeAddr,
 }
 
 pub struct Frame(Rc<RefCell<FrameInner>>);
@@ -24,12 +25,14 @@ impl Frame {
         num_result: usize,
         module: Option<Moduleinst>,
         prev_frame: Option<Frame>,
+        return_code_addr: CodeAddr,
     ) -> Self {
         Self(Rc::new(RefCell::new(FrameInner {
             locals,
             module,
             num_result,
             prev_frame,
+            return_code_addr,
         })))
     }
 
@@ -88,6 +91,10 @@ impl Frame {
             .prev_frame
             .as_ref()
             .map(|prev_frame| prev_frame.make_clone())
+    }
+
+    pub fn return_code_addr(&self) -> CodeAddr {
+        self.0.borrow().return_code_addr
     }
 
     pub fn make_clone(&self) -> Self {

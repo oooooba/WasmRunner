@@ -192,7 +192,7 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Self {
-        let dummy_frame = Frame::new(Vec::new(), 0, None, None);
+        let dummy_frame = Frame::new(Vec::new(), 0, None, None, usize::MAX);
         Self {
             store: Store::new(),
             stack: Stack::new(),
@@ -1263,7 +1263,7 @@ impl fmt::Display for ExecutionError {
     }
 }
 
-type CodeAddr = usize;
+pub type CodeAddr = usize;
 
 #[derive(Debug)]
 enum Code {
@@ -1451,6 +1451,7 @@ impl Executor {
         param_size: usize,
         return_size: usize,
         local_var_types: &[Valtype],
+        return_code_addr: CodeAddr,
     ) -> Result<(), ExecutionError> {
         if param_size + local_var_types.len() > u32::MAX as usize {
             return Err(ExecutionError::StackOperationFailure(
@@ -1480,7 +1481,13 @@ impl Executor {
         locals.reverse();
 
         let prev_frame = ctx.current_frame().make_clone();
-        let frame = Frame::new(locals, return_size, module, Some(prev_frame));
+        let frame = Frame::new(
+            locals,
+            return_size,
+            module,
+            Some(prev_frame),
+            return_code_addr,
+        );
         ctx.stack_mut().push_frame(frame.make_clone())?;
         ctx.update_frame(frame);
 
@@ -1504,7 +1511,9 @@ impl Executor {
         }
 
         let frame = ctx.stack_mut().pop_frame()?;
+        let cont_code_addr = frame.return_code_addr();
         ctx.update_frame(frame.prev_frame().unwrap());
+        ctx.update_code_addr(cont_code_addr);
 
         while let Some(ret) = result.pop() {
             ctx.stack_mut().push_value(ret)?;
@@ -1525,7 +1534,7 @@ impl Executor {
         let next_code_addr = 0;
 
         self.code = code;
-        self.enter_function(ctx, None, param_size, return_size, &[])?;
+        self.enter_function(ctx, None, param_size, return_size, &[], cont_addr)?;
         self.enter_block(ctx, next_code_addr, 0, label)?;
         self.execute(ctx)?;
 
@@ -1556,15 +1565,21 @@ impl Executor {
                 let cont_addr = code.len();
                 let label = Label::new(return_size, cont_addr);
 
-                let prev_code_addr = ctx.code_addr();
+                let return_code_addr = ctx.code_addr() + 1;
                 mem::swap(&mut self.code, &mut code);
 
                 let next_code_addr = 0;
-                self.enter_function(ctx, Some(module), param_size, return_size, func.locals())?;
+                self.enter_function(
+                    ctx,
+                    Some(module),
+                    param_size,
+                    return_size,
+                    func.locals(),
+                    return_code_addr,
+                )?;
                 self.enter_block(ctx, next_code_addr, 0, label)?;
                 self.execute(ctx)?;
 
-                ctx.update_code_addr(prev_code_addr);
                 mem::swap(&mut self.code, &mut code);
             }
 
@@ -1662,7 +1677,6 @@ impl Executor {
                 Call(funcidx) => {
                     let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
                     self.invoke_function(ctx, funcaddr)?;
-                    ctx.increment_code_addr();
                 }
                 CallIndirect(typeidx) => {
                     let tableaddr = ctx.current_frame().resolve_tableaddr(Tableidx::new(0))?;
@@ -1681,7 +1695,6 @@ impl Executor {
                         return Err(ExecutionError::IndirectCallTypeMismatch);
                     }
                     self.invoke_function(ctx, funcaddr)?;
-                    ctx.increment_code_addr();
                 }
                 End(next_code_addr) => {
                     let next_code_addr = *next_code_addr;
