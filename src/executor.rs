@@ -1588,7 +1588,6 @@ impl Executor {
                     return_code_addr,
                 )?;
                 self.enter_block(ctx, next_code_addr, 0, label)?;
-                self.execute(ctx)?;
             }
 
             Funcinst::Host { typ, hostcode } => {
@@ -1615,102 +1614,106 @@ impl Executor {
     }
 
     fn execute(&mut self, ctx: &mut Context) -> Result<(), ExecutionError> {
-        while let Some(code) = self.current_code(ctx) {
-            use Code::*;
-            match code {
-                Instr(instr_seq, index) => {
-                    execute_instr(
-                        &instr_seq.instr_seq()[*index],
-                        &mut ctx.stack,
-                        &mut ctx.current_frame,
-                        &mut ctx.store,
-                    )?;
-                    ctx.increment_code_addr();
-                }
-                Nop => {
-                    ctx.increment_code_addr();
-                }
-                Unreachable => return Err(ExecutionError::ExplicitTrap),
-                Block(blocktype, cont_addr) => {
-                    let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
-                    let num_params = blocktype.param_type().len();
-                    let num_returns = blocktype.return_type().len();
-                    let label = Label::new(num_returns, *cont_addr);
-                    let next_code_addr = ctx.code_addr() + 1;
-                    self.enter_block(ctx, next_code_addr, num_params, label)?;
-                }
-                Loop(blocktype, cont_addr) => {
-                    let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
-                    let num_params = blocktype.param_type().len();
-                    let label = Label::new(num_params, *cont_addr);
-                    let next_code_addr = ctx.code_addr() + 1;
-                    self.enter_block(ctx, next_code_addr, num_params, label)?;
-                }
-                If(blocktype, else_addr, cont_addr) => {
-                    let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
-                    let num_params = blocktype.param_type().len();
-                    let num_returns = blocktype.return_type().len();
-                    let label = Label::new(num_returns, *cont_addr);
-                    let cond = ctx.stack_mut().pop_i32()?;
-                    let next_code_addr = if cond != 0 {
-                        ctx.code_addr() + 1
-                    } else {
-                        *else_addr
-                    };
-                    self.enter_block(ctx, next_code_addr, num_params, label)?;
-                }
-                Br(labelidx) => {
-                    let labelidx = *labelidx;
-                    self.branch(labelidx, ctx)?;
-                }
-                BrIf(labelidx) => {
-                    let c = ctx.stack_mut().pop_i32()?;
-                    if c != 0 {
-                        let labelidx = *labelidx;
-                        self.branch(labelidx, ctx)?;
-                    } else {
+        // @todo fix to refer Frame
+        while !self.code_stack.is_empty() {
+            while let Some(code) = self.current_code(ctx) {
+                use Code::*;
+                match code {
+                    Instr(instr_seq, index) => {
+                        execute_instr(
+                            &instr_seq.instr_seq()[*index],
+                            &mut ctx.stack,
+                            &mut ctx.current_frame,
+                            &mut ctx.store,
+                        )?;
                         ctx.increment_code_addr();
                     }
-                }
-                BrTable(labelidxes, default_labelidx) => {
-                    let i = ctx.stack_mut().pop_i32()? as usize;
-                    let labelidx = if i < labelidxes.len() {
-                        labelidxes[i]
-                    } else {
-                        *default_labelidx
-                    };
-                    self.branch(labelidx, ctx)?;
-                }
-                Return => return self.exit_function(ctx),
-                Call(funcidx) => {
-                    let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
-                    self.invoke_function(ctx, funcaddr)?;
-                }
-                CallIndirect(typeidx) => {
-                    let tableaddr = ctx.current_frame().resolve_tableaddr(Tableidx::new(0))?;
-                    let i = ctx.stack_mut().pop_i32()? as usize;
-                    let tableinst = &ctx.store.tables()[tableaddr.to_usize()];
-                    if i >= tableinst.elem().len() {
-                        return Err(ExecutionError::UndefinedElement);
+                    Nop => {
+                        ctx.increment_code_addr();
                     }
-                    let typ = &ctx.current_frame().resolve_type(*typeidx)?;
-                    if tableinst.elem()[i].is_none() {
-                        unimplemented!() // @todo raise Error
+                    Unreachable => return Err(ExecutionError::ExplicitTrap),
+                    Block(blocktype, cont_addr) => {
+                        let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+                        let num_params = blocktype.param_type().len();
+                        let num_returns = blocktype.return_type().len();
+                        let label = Label::new(num_returns, *cont_addr);
+                        let next_code_addr = ctx.code_addr() + 1;
+                        self.enter_block(ctx, next_code_addr, num_params, label)?;
                     }
-                    let funcaddr = tableinst.elem()[i].unwrap();
-                    let f = &ctx.store.funcs()[funcaddr.to_usize()];
-                    if typ != f.typ() {
-                        return Err(ExecutionError::IndirectCallTypeMismatch);
+                    Loop(blocktype, cont_addr) => {
+                        let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+                        let num_params = blocktype.param_type().len();
+                        let label = Label::new(num_params, *cont_addr);
+                        let next_code_addr = ctx.code_addr() + 1;
+                        self.enter_block(ctx, next_code_addr, num_params, label)?;
                     }
-                    self.invoke_function(ctx, funcaddr)?;
-                }
-                End(next_code_addr) => {
-                    let next_code_addr = *next_code_addr;
-                    self.exit_block(ctx, next_code_addr)?;
+                    If(blocktype, else_addr, cont_addr) => {
+                        let blocktype = ctx.current_frame().expand_blocktype(blocktype)?;
+                        let num_params = blocktype.param_type().len();
+                        let num_returns = blocktype.return_type().len();
+                        let label = Label::new(num_returns, *cont_addr);
+                        let cond = ctx.stack_mut().pop_i32()?;
+                        let next_code_addr = if cond != 0 {
+                            ctx.code_addr() + 1
+                        } else {
+                            *else_addr
+                        };
+                        self.enter_block(ctx, next_code_addr, num_params, label)?;
+                    }
+                    Br(labelidx) => {
+                        let labelidx = *labelidx;
+                        self.branch(labelidx, ctx)?;
+                    }
+                    BrIf(labelidx) => {
+                        let c = ctx.stack_mut().pop_i32()?;
+                        if c != 0 {
+                            let labelidx = *labelidx;
+                            self.branch(labelidx, ctx)?;
+                        } else {
+                            ctx.increment_code_addr();
+                        }
+                    }
+                    BrTable(labelidxes, default_labelidx) => {
+                        let i = ctx.stack_mut().pop_i32()? as usize;
+                        let labelidx = if i < labelidxes.len() {
+                            labelidxes[i]
+                        } else {
+                            *default_labelidx
+                        };
+                        self.branch(labelidx, ctx)?;
+                    }
+                    Return => break,
+                    Call(funcidx) => {
+                        let funcaddr = ctx.current_frame().resolve_funcaddr(*funcidx)?;
+                        self.invoke_function(ctx, funcaddr)?;
+                    }
+                    CallIndirect(typeidx) => {
+                        let tableaddr = ctx.current_frame().resolve_tableaddr(Tableidx::new(0))?;
+                        let i = ctx.stack_mut().pop_i32()? as usize;
+                        let tableinst = &ctx.store.tables()[tableaddr.to_usize()];
+                        if i >= tableinst.elem().len() {
+                            return Err(ExecutionError::UndefinedElement);
+                        }
+                        let typ = &ctx.current_frame().resolve_type(*typeidx)?;
+                        if tableinst.elem()[i].is_none() {
+                            unimplemented!() // @todo raise Error
+                        }
+                        let funcaddr = tableinst.elem()[i].unwrap();
+                        let f = &ctx.store.funcs()[funcaddr.to_usize()];
+                        if typ != f.typ() {
+                            return Err(ExecutionError::IndirectCallTypeMismatch);
+                        }
+                        self.invoke_function(ctx, funcaddr)?;
+                    }
+                    End(next_code_addr) => {
+                        let next_code_addr = *next_code_addr;
+                        self.exit_block(ctx, next_code_addr)?;
+                    }
                 }
             }
+            self.exit_function(ctx)?;
         }
-        self.exit_function(ctx)
+        Ok(())
     }
 }
 
@@ -1730,6 +1733,7 @@ pub fn invoke(
 
     let mut executor = Executor::new();
     executor.invoke_function(ctx, funcaddr)?;
+    executor.execute(ctx)?;
 
     let mut result_values = Vec::new();
     for _ in 0..return_size {
