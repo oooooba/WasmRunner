@@ -1139,9 +1139,11 @@ fn execute_instr(
 }
 
 pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
+    let mut executor = Executor::new();
+
     let mut initial_global_values = Vec::new();
     for global in module.globals() {
-        let value = eval(ctx, global.init())?;
+        let value = executor.eval(ctx, global.init())?;
         initial_global_values.push(value);
     }
 
@@ -1149,7 +1151,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 
     for elem in module.elems() {
         // @todo push Frame
-        let eoval = eval(ctx, elem.offset())?;
+        let eoval = executor.eval(ctx, elem.offset())?;
         // @todo pop Frame
         let eo = match eoval.kind() {
             ValueKind::I32(n) => n as usize,
@@ -1172,7 +1174,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
     }
 
     for datum in module.data() {
-        let doval = eval(ctx, datum.offset())?;
+        let doval = executor.eval(ctx, datum.offset())?;
         let dofst = match doval.kind() {
             ValueKind::I32(n) => n as usize,
             _ => unimplemented!(), // @todo raise Error
@@ -1193,30 +1195,6 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
     }
 
     Ok(moduleinst)
-}
-
-fn eval(ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
-    ctx.stack().assert_stack_is_empty();
-
-    let param_size = 0;
-    let return_size = 1;
-
-    let code = instr_seq_to_code(expr.instr_seq());
-
-    let cont_addr = code.len();
-    let label = Label::new(return_size, cont_addr);
-
-    let next_code_addr = 0;
-    let mut executor = Executor::new(code);
-    executor.enter_function(ctx, None, param_size, return_size, &[])?;
-    executor.enter_block(ctx, next_code_addr, 0, label)?;
-    executor.execute(ctx)?;
-
-    let result = ctx.stack_mut().pop_value()?;
-
-    ctx.stack().assert_stack_is_empty();
-
-    Ok(result)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1356,8 +1334,8 @@ struct Executor {
 }
 
 impl Executor {
-    fn new(code: Vec<Code>) -> Self {
-        Self { code }
+    fn new() -> Self {
+        Self { code: Vec::new() }
     }
 
     fn current_code(&self, ctx: &Context) -> Option<&Code> {
@@ -1535,6 +1513,29 @@ impl Executor {
         Ok(())
     }
 
+    fn eval(&mut self, ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
+        ctx.stack().assert_stack_is_empty();
+
+        let param_size = 0;
+        let return_size = 1;
+
+        let code = instr_seq_to_code(expr.instr_seq());
+        let cont_addr = code.len();
+        let label = Label::new(return_size, cont_addr);
+        let next_code_addr = 0;
+
+        self.code = code;
+        self.enter_function(ctx, None, param_size, return_size, &[])?;
+        self.enter_block(ctx, next_code_addr, 0, label)?;
+        self.execute(ctx)?;
+
+        let result = ctx.stack_mut().pop_value()?;
+
+        ctx.stack().assert_stack_is_empty();
+
+        Ok(result)
+    }
+
     fn invoke_function(
         &mut self,
         ctx: &mut Context,
@@ -1706,7 +1707,7 @@ pub fn invoke(
         ctx.stack_mut().push_value(arg)?;
     }
 
-    let mut executor = Executor::new(Vec::new());
+    let mut executor = Executor::new();
     executor.invoke_function(ctx, funcaddr)?;
 
     let mut result_values = Vec::new();
