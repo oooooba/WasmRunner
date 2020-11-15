@@ -5,7 +5,9 @@ use wasm_runner::decoder::Decoder;
 use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
 use wasm_runner::instance::{Extarnval, Hostfunc};
 use wasm_runner::module::Name;
-use wasm_runner::types::{Functype, Globaltype, Mutability, Resulttype, Valtype};
+use wasm_runner::types::{
+    Elemtype, Functype, Globaltype, Limit, Mutability, Resulttype, Tabletype, Valtype,
+};
 use wasm_runner::validator::validate;
 use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
@@ -65,6 +67,7 @@ fn run_test(wast_file_path: &str) {
     let mut ctx = Context::new();
     register_spectest_hostfunc(&mut ctx);
     register_spectest_global(&mut ctx);
+    register_spectest_table(&mut ctx);
     let mut last_moduleinst = None;
     for directive in wast_ast.directives {
         use WastDirective::*;
@@ -323,6 +326,20 @@ fn register_spectest_global(ctx: &mut Context) {
             Some(modulename.make_clone()),
             Name::new(name.to_string()),
             Extarnval::Global(globaladdr),
+        );
+    }
+}
+
+fn register_spectest_table(ctx: &mut Context) {
+    let modulename = Name::new("spectest".to_string());
+    let targets = vec![("table", Limit::new(10, Some(20)), Elemtype::Funcref)];
+    for (name, limit, elemtype) in targets {
+        let tabletype = Tabletype::new(limit, elemtype);
+        let tableaddr = ctx.register_table(&tabletype).unwrap();
+        ctx.register_content(
+            Some(modulename.make_clone()),
+            Name::new(name.to_string()),
+            Extarnval::Table(tableaddr),
         );
     }
 }
