@@ -272,6 +272,10 @@ impl Context {
     pub fn register_table(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
         self.store.alloctable(tabletype)
     }
+
+    pub fn register_mem(&mut self, memtype: &Memtype) -> Result<Memaddr, ExecutionError> {
+        self.store.allocmem(memtype)
+    }
 }
 
 fn execute_instr(

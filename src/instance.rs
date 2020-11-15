@@ -152,7 +152,7 @@ impl Store {
         Ok(addr)
     }
 
-    fn allocmem(&mut self, memtype: &Memtype) -> Result<Memaddr, ExecutionError> {
+    pub fn allocmem(&mut self, memtype: &Memtype) -> Result<Memaddr, ExecutionError> {
         let addr = Memaddr(Address(self.mems.len()));
         let n = memtype.limit().min() as usize;
         let m = memtype.limit().max().clone();
