@@ -1607,6 +1607,8 @@ impl Executor {
                 while let Some(ret) = result.pop() {
                     ctx.stack_mut().push_value(ret)?;
                 }
+
+                ctx.increment_code_addr();
             }
         }
 
