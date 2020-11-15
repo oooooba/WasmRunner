@@ -144,7 +144,7 @@ impl Store {
         Ok(addr)
     }
 
-    fn alloctable(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
+    pub fn alloctable(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
         let addr = Tableaddr(Address(self.tables.len()));
         let elem = vec![None; tabletype.limit().min() as usize];
         let tableinst = Tableinst::new(elem, tabletype.limit().max().clone());

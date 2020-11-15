@@ -268,6 +268,10 @@ impl Context {
     ) -> Result<Globaladdr, ExecutionError> {
         self.store.allocglobal(globaltype, val)
     }
+
+    pub fn register_table(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
+        self.store.alloctable(tabletype)
+    }
 }
 
 fn execute_instr(
