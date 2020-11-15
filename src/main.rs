@@ -192,6 +192,7 @@ fn run_test(wast_file_path: &str) {
                     "indirect call type mismatch" => ExecutionError::IndirectCallTypeMismatch,
                     "invalid conversion to integer" => ExecutionError::InvalidConversionToInteger,
                     "unreachable" => ExecutionError::ExplicitTrap,
+                    "uninitialized element" => ExecutionError::UninitializedElement,
                     _ => unimplemented!(),
                 };
 
