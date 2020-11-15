@@ -6,7 +6,7 @@ use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
 use wasm_runner::instance::{Extarnval, Hostfunc};
 use wasm_runner::module::Name;
 use wasm_runner::types::{
-    Elemtype, Functype, Globaltype, Limit, Mutability, Resulttype, Tabletype, Valtype,
+    Elemtype, Functype, Globaltype, Limit, Memtype, Mutability, Resulttype, Tabletype, Valtype,
 };
 use wasm_runner::validator::validate;
 use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
@@ -68,6 +68,7 @@ fn run_test(wast_file_path: &str) {
     register_spectest_hostfunc(&mut ctx);
     register_spectest_global(&mut ctx);
     register_spectest_table(&mut ctx);
+    register_spectest_mem(&mut ctx);
     let mut last_moduleinst = None;
     for directive in wast_ast.directives {
         use WastDirective::*;
@@ -341,6 +342,20 @@ fn register_spectest_table(ctx: &mut Context) {
             Some(modulename.make_clone()),
             Name::new(name.to_string()),
             Extarnval::Table(tableaddr),
+        );
+    }
+}
+
+fn register_spectest_mem(ctx: &mut Context) {
+    let modulename = Name::new("spectest".to_string());
+    let targets = vec![("memory", Limit::new(1, Some(2)))];
+    for (name, limit) in targets {
+        let memtype = Memtype::new(limit);
+        let memaddr = ctx.register_mem(&memtype).unwrap();
+        ctx.register_content(
+            Some(modulename.make_clone()),
+            Name::new(name.to_string()),
+            Extarnval::Mem(memaddr),
         );
     }
 }
