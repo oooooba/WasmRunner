@@ -1225,6 +1225,7 @@ pub enum ExecutionError {
     UndefinedElement,
     IndirectCallTypeMismatch,
     InvalidConversionToInteger,
+    UninitializedElement,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1260,6 +1261,7 @@ impl fmt::Display for ExecutionError {
             UndefinedElement => write!(f, "UndefinedElement:"),
             IndirectCallTypeMismatch => write!(f, "IndirectCallTypeMismatch:"),
             InvalidConversionToInteger => write!(f, "InvalidConversionToInteger:"),
+            UninitializedElement => write!(f, "UninitializedElement:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }
@@ -1702,7 +1704,7 @@ impl Executor {
                         }
                         let typ = &ctx.current_frame().resolve_type(*typeidx)?;
                         if tableinst.elem()[i].is_none() {
-                            unimplemented!() // @todo raise Error
+                            return Err(ExecutionError::UninitializedElement);
                         }
                         let funcaddr = tableinst.elem()[i].unwrap();
                         let f = &ctx.store.funcs()[funcaddr.to_usize()];
