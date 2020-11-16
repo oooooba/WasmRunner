@@ -240,7 +240,12 @@ impl Context {
     }
 
     pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
-        self.store.find_funcaddr(name)
+        let addr = self.store.resolve(None, name);
+        if let Some(Extarnval::Func(funcaddr)) = addr {
+            Some(*funcaddr)
+        } else {
+            None
+        }
     }
 
     pub fn load_global(&self, module_name: Option<&Name>, content_name: &Name) -> Option<Value> {
