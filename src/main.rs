@@ -98,10 +98,6 @@ fn run_test(wast_file_path: &str) {
                 run_invoke_ation(&mut ctx, name, args).unwrap();
             }
             AssertReturn { exec, results, .. } => {
-                let (func_name, arguments) = match exec {
-                    WastExecute::Invoke(WastInvoke { name, args, .. }) => (name, args),
-                    _ => unimplemented!(),
-                };
                 let (expected_result, should_replace_nan): (Vec<Value>, Vec<bool>) = results
                     .into_iter()
                     .map(|res| {
@@ -140,23 +136,42 @@ fn run_test(wast_file_path: &str) {
                     })
                     .unzip();
 
-                let WasmRunnerResult::Values(res) =
-                    run_invoke_ation(&mut ctx, func_name, arguments).unwrap();
-                let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
-                    res.iter()
-                        .map(|v| match v.kind() {
-                            ValueKind::F32(f) if f.is_nan() => {
-                                Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
-                            }
-                            ValueKind::F64(f) if f.is_nan() => {
-                                Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
-                            }
-                            _ => *v,
-                        })
-                        .collect()
-                } else {
-                    res
+                let (func_name, res) = match exec {
+                    WastExecute::Invoke(WastInvoke { name, args, .. }) => {
+                        let (func_name, arguments) = (name, args);
+
+                        let WasmRunnerResult::Values(res) =
+                            run_invoke_ation(&mut ctx, func_name, arguments).unwrap();
+                        let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
+                            res.iter()
+                                .map(|v| match v.kind() {
+                                    ValueKind::F32(f) if f.is_nan() => {
+                                        Value::new(ValueKind::F32(F32Bytes::new(f32::NAN)))
+                                    }
+                                    ValueKind::F64(f) if f.is_nan() => {
+                                        Value::new(ValueKind::F64(F64Bytes::new(f64::NAN)))
+                                    }
+                                    _ => *v,
+                                })
+                                .collect()
+                        } else {
+                            res
+                        };
+                        (func_name, res)
+                    }
+                    WastExecute::Get { module, global } => {
+                        let module_name = module.map(|id| Name::new(id.name().to_string()));
+                        let content_name = Name::new(global.to_string());
+                        (
+                            "get",
+                            vec![ctx
+                                .load_global(module_name.as_ref(), &content_name)
+                                .unwrap()],
+                        )
+                    }
+                    _ => unimplemented!(),
                 };
+
                 println!("{}: result = {:?}", func_name, res);
                 assert_eq!(res, expected_result);
             }
