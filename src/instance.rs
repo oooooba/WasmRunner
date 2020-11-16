@@ -257,12 +257,17 @@ impl Store {
     }
 
     pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
+        // @todo merge to Store::resolve
         self.name_table
             .resolve(None, name)
             .map(|externval| match externval {
                 Extarnval::Func(funcaddr) => *funcaddr,
                 _ => unimplemented!(),
             })
+    }
+
+    pub fn resolve(&self, module_name: Option<&Name>, content_name: &Name) -> Option<&Extarnval> {
+        self.name_table.resolve(module_name, content_name)
     }
 
     pub fn register_content(

@@ -243,6 +243,17 @@ impl Context {
         self.store.find_funcaddr(name)
     }
 
+    pub fn load_global(&self, module_name: Option<&Name>, content_name: &Name) -> Option<Value> {
+        let addr = self.store.resolve(module_name, content_name);
+        let globaladdr = if let Some(Extarnval::Global(globaladdr)) = addr {
+            globaladdr
+        } else {
+            return None;
+        };
+        let globalinst = &self.store.globals()[globaladdr.to_usize()];
+        Some(globalinst.value())
+    }
+
     pub fn register_content(
         &mut self,
         module_name: Option<Name>,
