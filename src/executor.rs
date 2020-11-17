@@ -1174,9 +1174,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
     let moduleinst = ctx.store.instantiate(module, initial_global_values)?;
 
     for elem in module.elems() {
-        // @todo push Frame
-        let eoval = executor.eval(ctx, None, elem.offset())?;
-        // @todo pop Frame
+        let eoval = executor.eval(ctx, Some(moduleinst.make_clone()), elem.offset())?;
         let eo = match eoval.kind() {
             ValueKind::I32(n) => n as usize,
             _ => unimplemented!(), // @todo raise Error
