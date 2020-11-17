@@ -1167,7 +1167,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 
     let mut initial_global_values = Vec::new();
     for global in module.globals() {
-        let value = executor.eval(ctx, global.init())?;
+        let value = executor.eval(ctx, None, global.init())?;
         initial_global_values.push(value);
     }
 
@@ -1175,7 +1175,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 
     for elem in module.elems() {
         // @todo push Frame
-        let eoval = executor.eval(ctx, elem.offset())?;
+        let eoval = executor.eval(ctx, None, elem.offset())?;
         // @todo pop Frame
         let eo = match eoval.kind() {
             ValueKind::I32(n) => n as usize,
@@ -1198,7 +1198,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
     }
 
     for datum in module.data() {
-        let doval = executor.eval(ctx, datum.offset())?;
+        let doval = executor.eval(ctx, None, datum.offset())?;
         let dofst = match doval.kind() {
             ValueKind::I32(n) => n as usize,
             _ => unimplemented!(), // @todo raise Error
@@ -1559,7 +1559,12 @@ impl Executor {
         Ok(())
     }
 
-    fn eval(&mut self, ctx: &mut Context, expr: &Expr) -> Result<Value, ExecutionError> {
+    fn eval(
+        &mut self,
+        ctx: &mut Context,
+        moduleinst: Option<Moduleinst>,
+        expr: &Expr,
+    ) -> Result<Value, ExecutionError> {
         ctx.stack().assert_stack_is_empty();
 
         let param_size = 0;
@@ -1570,7 +1575,15 @@ impl Executor {
         let label = Label::new(return_size, cont_addr);
         let next_code_addr = 0;
 
-        self.enter_function(ctx, None, param_size, return_size, &[], code, cont_addr)?;
+        self.enter_function(
+            ctx,
+            moduleinst,
+            param_size,
+            return_size,
+            &[],
+            code,
+            cont_addr,
+        )?;
         self.enter_block(ctx, next_code_addr, 0, label)?;
         self.execute(ctx)?;
 
