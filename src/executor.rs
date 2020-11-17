@@ -1198,7 +1198,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
     }
 
     for datum in module.data() {
-        let doval = executor.eval(ctx, None, datum.offset())?;
+        let doval = executor.eval(ctx, Some(moduleinst.make_clone()), datum.offset())?;
         let dofst = match doval.kind() {
             ValueKind::I32(n) => n as usize,
             _ => unimplemented!(), // @todo raise Error
