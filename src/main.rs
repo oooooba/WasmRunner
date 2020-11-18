@@ -275,6 +275,12 @@ fn hostfunc_print_f64_f64(args: Vec<Value>) -> Result<WasmRunnerResult, Executio
     Ok(WasmRunnerResult::Values(vec![]))
 }
 
+fn hostfunc_print(args: Vec<Value>) -> Result<WasmRunnerResult, ExecutionError> {
+    assert_eq!(args.len(), 0);
+    println!("hostfunc_print:");
+    Ok(WasmRunnerResult::Values(vec![]))
+}
+
 fn register_spectest_hostfunc(ctx: &mut Context) {
     let modulename = Name::new("spectest".to_string());
     let targets: Vec<(
@@ -307,6 +313,7 @@ fn register_spectest_hostfunc(ctx: &mut Context) {
             hostfunc_print_f64_f64,
             (vec![Valtype::F64, Valtype::F64], vec![]),
         ),
+        ("print", hostfunc_print, (vec![], vec![])),
     ];
     for (name, code, (param_type, return_type)) in targets {
         let hostfunc = Hostfunc::new(code);
