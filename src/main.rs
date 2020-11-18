@@ -176,10 +176,11 @@ fn run_test(wast_file_path: &str) {
                 assert_eq!(res, expected_result);
             }
             AssertTrap { exec, message, .. } => {
-                let (func_name, arguments) = match exec {
-                    WastExecute::Invoke(WastInvoke { name, args, .. }) => (
-                        name,
-                        args.into_iter()
+                let (func_name, result_err) = match exec {
+                    WastExecute::Invoke(WastInvoke { name, args, .. }) => {
+                        let func_name = name;
+                        let arguments = args
+                            .into_iter()
                             .map(|arg| {
                                 assert_eq!(arg.instrs.len(), 1);
                                 use Instruction::*;
@@ -196,8 +197,26 @@ fn run_test(wast_file_path: &str) {
                                 };
                                 Value::new(value_kind)
                             })
-                            .collect::<Vec<Value>>(),
-                    ),
+                            .collect::<Vec<Value>>();
+                        let funcaddr = ctx
+                            .find_funcaddr(&Name::new(func_name.to_string()))
+                            .unwrap();
+                        (
+                            func_name,
+                            invoke(&mut ctx, funcaddr, arguments).unwrap_err(),
+                        )
+                    }
+                    WastExecute::Module(mut module) => {
+                        let name = module.id.map(|id| Name::new(id.name().to_string()));
+                        let mut reader = &module.encode().unwrap()[..];
+                        let mut decoder = Decoder::new(&mut reader);
+                        let mut module = decoder.run().expect("should success");
+                        if let Some(name) = name {
+                            module.set_name(name);
+                        }
+                        validate(&module).unwrap();
+                        ("trap_module", instantiate(&mut ctx, &module).unwrap_err())
+                    }
                     _ => unimplemented!(),
                 };
                 let expected_trap = match message {
@@ -212,12 +231,8 @@ fn run_test(wast_file_path: &str) {
                     _ => unimplemented!(),
                 };
 
-                let funcaddr = ctx
-                    .find_funcaddr(&Name::new(func_name.to_string()))
-                    .unwrap();
-                let res = invoke(&mut ctx, funcaddr, arguments).unwrap_err();
-                println!("{}: trap = {:?}", func_name, res);
-                assert_eq!(res, expected_trap);
+                println!("{}: trap = {:?}", func_name, result_err);
+                assert_eq!(result_err, expected_trap);
                 ctx.reset();
             }
             _ => (),
