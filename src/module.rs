@@ -82,6 +82,10 @@ impl Module {
         &self.exports
     }
 
+    pub fn start(&self) -> Option<Funcidx> {
+        self.start.clone()
+    }
+
     pub fn elems(&self) -> &Vec<Elem> {
         &self.elems
     }

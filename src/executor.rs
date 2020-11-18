@@ -1216,6 +1216,11 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
         }
     }
 
+    if let Some(funcidx) = module.start() {
+        let funcaddr = moduleinst.resolve_funcaddr(funcidx).unwrap();
+        invoke(ctx, funcaddr, vec![])?;
+    }
+
     Ok(moduleinst)
 }
 
