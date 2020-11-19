@@ -239,8 +239,12 @@ impl Context {
         self.code_addr += 1;
     }
 
-    pub fn find_funcaddr(&self, name: &Name) -> Option<Funcaddr> {
-        let addr = self.store.resolve(None, name);
+    pub fn find_funcaddr(
+        &self,
+        module_name: Option<&Name>,
+        content_name: &Name,
+    ) -> Option<Funcaddr> {
+        let addr = self.store.resolve(module_name, content_name);
         if let Some(Extarnval::Func(funcaddr)) = addr {
             Some(*funcaddr)
         } else {
