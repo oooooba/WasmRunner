@@ -3,7 +3,7 @@ use std::fs;
 
 use wasm_runner::decoder::Decoder;
 use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
-use wasm_runner::instance::{Extarnval, Hostfunc};
+use wasm_runner::instance::{Extarnval, Hostfunc, Moduleinst};
 use wasm_runner::module::Name;
 use wasm_runner::types::{
     Elemtype, Functype, Globaltype, Limit, Memtype, Mutability, Resulttype, Tabletype, Valtype,
@@ -14,8 +14,8 @@ use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult}
 // test
 use wast::parser::{self, ParseBuffer};
 use wast::{
-    AssertExpression, Expression, Id, Instruction, NanPattern, Wast, WastDirective, WastExecute,
-    WastInvoke,
+    AssertExpression, Expression, Id, Instruction, Module, NanPattern, Wast, WastDirective,
+    WastExecute, WastInvoke,
 };
 
 fn main() {
@@ -64,6 +64,21 @@ fn run_invoke_ation<'a>(
     invoke(ctx, funcaddr, arguments)
 }
 
+fn run_instantiate_action<'a>(
+    ctx: &mut Context,
+    module: &mut Module<'a>,
+) -> Result<Moduleinst, ExecutionError> {
+    let name = module.id.map(|id| Name::new(id.name().to_string()));
+    let mut reader = &module.encode().unwrap()[..];
+    let mut decoder = Decoder::new(&mut reader);
+    let mut module = decoder.run().expect("should success");
+    if let Some(name) = name {
+        module.set_name(name);
+    }
+    validate(&module).unwrap();
+    instantiate(ctx, &module)
+}
+
 fn run_test(wast_file_path: &str) {
     println!("[[test]] {}", wast_file_path);
     let wast_text = fs::read_to_string(wast_file_path).unwrap();
@@ -79,15 +94,7 @@ fn run_test(wast_file_path: &str) {
         use WastDirective::*;
         match directive {
             Module(mut module) => {
-                let name = module.id.map(|id| Name::new(id.name().to_string()));
-                let mut reader = &module.encode().unwrap()[..];
-                let mut decoder = Decoder::new(&mut reader);
-                let mut module = decoder.run().expect("should success");
-                if let Some(name) = name {
-                    module.set_name(name);
-                }
-                validate(&module).unwrap();
-                let moduleinst = instantiate(&mut ctx, &module).unwrap();
+                let moduleinst = run_instantiate_action(&mut ctx, &mut module).unwrap();
                 last_moduleinst = Some(moduleinst);
             }
             Register { name, .. } => {
@@ -218,17 +225,10 @@ fn run_test(wast_file_path: &str) {
                             invoke(&mut ctx, funcaddr, arguments).unwrap_err(),
                         )
                     }
-                    WastExecute::Module(mut module) => {
-                        let name = module.id.map(|id| Name::new(id.name().to_string()));
-                        let mut reader = &module.encode().unwrap()[..];
-                        let mut decoder = Decoder::new(&mut reader);
-                        let mut module = decoder.run().expect("should success");
-                        if let Some(name) = name {
-                            module.set_name(name);
-                        }
-                        validate(&module).unwrap();
-                        ("trap_module", instantiate(&mut ctx, &module).unwrap_err())
-                    }
+                    WastExecute::Module(mut module) => (
+                        "trap_module",
+                        run_instantiate_action(&mut ctx, &mut module).unwrap_err(),
+                    ),
                     _ => unimplemented!(),
                 };
                 let expected_trap = match message {
