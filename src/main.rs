@@ -14,7 +14,7 @@ use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult}
 // test
 use wast::parser::{self, ParseBuffer};
 use wast::{
-    AssertExpression, Expression, Instruction, NanPattern, Wast, WastDirective, WastExecute,
+    AssertExpression, Expression, Id, Instruction, NanPattern, Wast, WastDirective, WastExecute,
     WastInvoke,
 };
 
@@ -33,6 +33,7 @@ fn main() {
 
 fn run_invoke_ation<'a>(
     ctx: &mut Context,
+    module: Option<Id<'a>>,
     name: &'a str,
     args: Vec<Expression<'a>>,
 ) -> Result<WasmRunnerResult, ExecutionError> {
@@ -55,7 +56,11 @@ fn run_invoke_ation<'a>(
             Value::new(value_kind)
         })
         .collect::<Vec<Value>>();
-    let funcaddr = ctx.find_funcaddr(&Name::new(name.to_string())).unwrap();
+    let module_name = module.map(|id| Name::new(id.name().to_string()));
+    let content_name = Name::new(name.to_string());
+    let funcaddr = ctx
+        .find_funcaddr(module_name.as_ref(), &content_name)
+        .unwrap();
     invoke(ctx, funcaddr, arguments)
 }
 
@@ -94,8 +99,10 @@ fn run_test(wast_file_path: &str) {
                     ctx.register_content(Some(Name::new(name.to_string())), content_name, content);
                 }
             }
-            Invoke(WastInvoke { name, args, .. }) => {
-                run_invoke_ation(&mut ctx, name, args).unwrap();
+            Invoke(WastInvoke {
+                name, args, module, ..
+            }) => {
+                run_invoke_ation(&mut ctx, module, name, args).unwrap();
             }
             AssertReturn { exec, results, .. } => {
                 let (expected_result, should_replace_nan): (Vec<Value>, Vec<bool>) = results
@@ -137,11 +144,13 @@ fn run_test(wast_file_path: &str) {
                     .unzip();
 
                 let (func_name, res) = match exec {
-                    WastExecute::Invoke(WastInvoke { name, args, .. }) => {
+                    WastExecute::Invoke(WastInvoke {
+                        module, name, args, ..
+                    }) => {
                         let (func_name, arguments) = (name, args);
 
                         let WasmRunnerResult::Values(res) =
-                            run_invoke_ation(&mut ctx, func_name, arguments).unwrap();
+                            run_invoke_ation(&mut ctx, module, func_name, arguments).unwrap();
                         let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
                             res.iter()
                                 .map(|v| match v.kind() {
@@ -177,7 +186,9 @@ fn run_test(wast_file_path: &str) {
             }
             AssertTrap { exec, message, .. } => {
                 let (func_name, result_err) = match exec {
-                    WastExecute::Invoke(WastInvoke { name, args, .. }) => {
+                    WastExecute::Invoke(WastInvoke {
+                        module, name, args, ..
+                    }) => {
                         let func_name = name;
                         let arguments = args
                             .into_iter()
@@ -198,8 +209,9 @@ fn run_test(wast_file_path: &str) {
                                 Value::new(value_kind)
                             })
                             .collect::<Vec<Value>>();
+                        let module_name = module.map(|id| Name::new(id.name().to_string()));
                         let funcaddr = ctx
-                            .find_funcaddr(&Name::new(func_name.to_string()))
+                            .find_funcaddr(module_name.as_ref(), &Name::new(func_name.to_string()))
                             .unwrap();
                         (
                             func_name,
