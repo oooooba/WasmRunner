@@ -236,10 +236,13 @@ fn run_test(wast_file_path: &str) {
                     "integer overflow" => ExecutionError::IntegerOverflow,
                     "out of bounds memory access" => ExecutionError::OutOfBoundsMemoryAccess,
                     "undefined element" => ExecutionError::UndefinedElement,
+                    "undefined" => ExecutionError::UndefinedElement,
                     "indirect call type mismatch" => ExecutionError::IndirectCallTypeMismatch,
+                    "indirect call" => ExecutionError::IndirectCallTypeMismatch,
                     "invalid conversion to integer" => ExecutionError::InvalidConversionToInteger,
                     "unreachable" => ExecutionError::ExplicitTrap,
                     "uninitialized element" => ExecutionError::UninitializedElement,
+                    "uninitialized" => ExecutionError::UninitializedElement,
                     _ => unimplemented!(),
                 };
 
