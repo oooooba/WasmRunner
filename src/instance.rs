@@ -78,6 +78,29 @@ impl Store {
         Ok(moduleinst)
     }
 
+    pub fn instantiate_with_imported_globals(
+        &mut self,
+        module: &Module,
+    ) -> Result<Moduleinst, ExecutionError> {
+        let mut moduleinst = Moduleinst::new();
+        let mut imported_globals = Vec::new();
+        for import in module.imports() {
+            let content = self
+                .name_table
+                .resolve(Some(import.module()), import.name())
+                .unwrap(); // @todo
+            match (content, import.desc()) {
+                (Extarnval::Func(_), Importdesc::Func(_)) => (),
+                (Extarnval::Table(_), Importdesc::Table(_)) => (),
+                (Extarnval::Mem(_), Importdesc::Mem(_)) => (),
+                (Extarnval::Global(addr), Importdesc::Global(_)) => imported_globals.push(*addr),
+                _ => unimplemented!(),
+            }
+        }
+        moduleinst.update_globaladdrs(imported_globals);
+        Ok(moduleinst)
+    }
+
     pub fn funcs(&self) -> &Vec<Funcinst> {
         &self.funcs
     }

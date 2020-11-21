@@ -1169,11 +1169,15 @@ fn execute_instr(
 pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, ExecutionError> {
     let mut executor = Executor::new();
 
-    let mut initial_global_values = Vec::new();
-    for global in module.globals() {
-        let value = executor.eval(ctx, None, global.init())?;
-        initial_global_values.push(value);
-    }
+    let initial_global_values = {
+        let moduleinst = ctx.store.instantiate_with_imported_globals(module)?;
+        let mut initial_global_values = Vec::new();
+        for global in module.globals() {
+            let value = executor.eval(ctx, Some(moduleinst.make_clone()), global.init())?;
+            initial_global_values.push(value);
+        }
+        initial_global_values
+    };
 
     let moduleinst = ctx.store.instantiate(module, initial_global_values)?;
 
