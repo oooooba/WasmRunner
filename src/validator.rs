@@ -568,7 +568,7 @@ impl TypeContext {
         }
         self.validate_memtype(&self.mems[0])?;
         if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
-            unimplemented!() // @todo
+            return Err(ValidationError::MemoryAccessAlignmentViolation);
         }
         consume(type_stack, TypeStackEntry::Type(Valtype::I32))?;
         produce(type_stack, TypeStackEntry::Type(valtype));
@@ -813,6 +813,7 @@ pub enum ValidationError {
     Limit(String),
     Module(String),
     TypeMismatch,
+    MemoryAccessAlignmentViolation,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
