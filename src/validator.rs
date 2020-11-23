@@ -36,7 +36,7 @@ impl TypeStack {
             (Some(Type(valtype_s)), Type(valtype_e)) if valtype_s == valtype_e => {
                 Some(Type(valtype_s))
             }
-            (Some(Type(_)), Type(_)) => unimplemented!(), // @todo
+            (Some(Type(_)), Type(_)) => None,
             (Some(Type(valtype_s)), AnyType) => Some(Type(valtype_s)),
 
             (Some(AnyType), Type(valtype_e)) => Some(Type(valtype_e)),
@@ -53,7 +53,7 @@ impl TypeStack {
                 Some(AnyType)
             }
 
-            (None, _) => unimplemented!(), // @todo
+            (None, _) => None,
         }
     }
 
@@ -609,7 +609,7 @@ impl TypeContext {
         if type_stack.is_empty() {
             Ok(())
         } else {
-            unimplemented!() // @todo
+            Err(ValidationError::TypeMismatch)
         }
     }
 
