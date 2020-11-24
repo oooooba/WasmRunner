@@ -492,7 +492,7 @@ impl TypeContext {
                         unimplemented!() // @todo
                     }
                     if &self.labels[i] != resulttype {
-                        unimplemented!() // @todo
+                        return Err(ValidationError::TypeMismatch);
                     }
                 }
                 consume(type_stack, Type(I32))?;
