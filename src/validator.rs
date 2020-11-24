@@ -465,7 +465,7 @@ impl TypeContext {
             Br(labelidx) => {
                 let i = labelidx.to_usize();
                 if i >= self.labels.len() {
-                    unimplemented!() // @todo
+                    return Err(ValidationError::InvalidLabel);
                 }
                 let resulttype = &self.labels[i];
                 consume_with_resulttype(type_stack, resulttype)?;
@@ -474,7 +474,7 @@ impl TypeContext {
             BrIf(labelidx) => {
                 let i = labelidx.to_usize();
                 if i >= self.labels.len() {
-                    unimplemented!() // @todo
+                    return Err(ValidationError::InvalidLabel);
                 }
                 let resulttype = &self.labels[i];
                 consume(type_stack, Type(I32))?;
@@ -483,13 +483,13 @@ impl TypeContext {
             }
             BrTable(labelidxes, default_labelidx) => {
                 if default_labelidx.to_usize() >= self.labels.len() {
-                    unimplemented!() // @todo
+                    return Err(ValidationError::InvalidLabel);
                 }
                 let resulttype = &self.labels[default_labelidx.to_usize()];
                 for labelidx in labelidxes {
                     let i = labelidx.to_usize();
                     if i >= self.labels.len() {
-                        unimplemented!() // @todo
+                        return Err(ValidationError::InvalidLabel);
                     }
                     if &self.labels[i] != resulttype {
                         return Err(ValidationError::TypeMismatch);
@@ -814,6 +814,7 @@ pub enum ValidationError {
     Module(String),
     TypeMismatch,
     MemoryAccessAlignmentViolation,
+    InvalidLabel,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
