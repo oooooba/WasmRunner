@@ -197,7 +197,7 @@ impl TypeContext {
 
         for funcidx in elem.init() {
             if funcidx.to_usize() >= self.funcs.len() {
-                unimplemented!()
+                return Err(ValidationError::InvalidFunction);
             }
         }
 
@@ -506,7 +506,7 @@ impl TypeContext {
             }
             Call(funcidx) => {
                 if funcidx.to_usize() >= self.funcs.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidFunction);
                 }
                 let functype = &self.funcs[funcidx.to_usize()];
                 consume_with_resulttype(type_stack, functype.param_type())?;
@@ -815,6 +815,7 @@ pub enum ValidationError {
     TypeMismatch,
     MemoryAccessAlignmentViolation,
     InvalidLabel,
+    InvalidFunction,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
