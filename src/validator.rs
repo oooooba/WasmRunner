@@ -514,7 +514,7 @@ impl TypeContext {
             }
             CallIndirect(funcidx) => {
                 if self.tables.len() < 1 {
-                    unimplemented!() // @todo
+                    return Err(ValidationError::InvalidTable);
                 }
                 if self.tables[0].elemtype() != &Elemtype::Funcref {
                     unimplemented!() // @todo
@@ -816,6 +816,7 @@ pub enum ValidationError {
     MemoryAccessAlignmentViolation,
     InvalidLabel,
     InvalidFunction,
+    InvalidTable,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
