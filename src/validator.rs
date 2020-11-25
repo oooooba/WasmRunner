@@ -204,6 +204,17 @@ impl TypeContext {
         Ok(())
     }
 
+    fn validate_data(&mut self, data: &Data) -> Result<(), ValidationError> {
+        if data.data().to_usize() >= self.mems.len() {
+            return Err(ValidationError::InvalidMemory);
+        }
+
+        self.validate_const_expr(data.offset())?;
+        self.validate_expr(data.offset(), &Resulttype::new(vec![Valtype::I32]))?;
+
+        Ok(())
+    }
+
     fn validate_instr(
         &mut self,
         instr: &Instr,
@@ -774,6 +785,10 @@ impl TypeContext {
             self.validate_elem(elem)?;
         }
 
+        for data in module.data() {
+            self.validate_data(data)?;
+        }
+
         for import in module.imports() {
             self.validate_import(import)?;
         }
@@ -818,6 +833,7 @@ pub enum ValidationError {
     InvalidFunction,
     InvalidTable,
     InvalidType,
+    InvalidMemory,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
