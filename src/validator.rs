@@ -520,7 +520,7 @@ impl TypeContext {
                     unimplemented!() // @todo
                 }
                 if funcidx.to_usize() >= self.types.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidType);
                 }
                 let functype = &self.types[funcidx.to_usize()];
                 consume(type_stack, Type(I32))?;
@@ -817,6 +817,7 @@ pub enum ValidationError {
     InvalidLabel,
     InvalidFunction,
     InvalidTable,
+    InvalidType,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
