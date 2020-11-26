@@ -185,15 +185,15 @@ impl TypeContext {
 
     fn validate_elem(&mut self, elem: &Elem) -> Result<(), ValidationError> {
         if elem.table().to_usize() >= self.tables.len() {
-            unimplemented!()
+            return Err(ValidationError::InvalidTable);
         }
 
         if self.tables[elem.table().to_usize()].elemtype() != &Elemtype::Funcref {
             unimplemented!()
         }
 
-        self.validate_expr(elem.offset(), &Resulttype::new(vec![Valtype::I32]))?;
         self.validate_const_expr(elem.offset())?;
+        self.validate_expr(elem.offset(), &Resulttype::new(vec![Valtype::I32]))?;
 
         for funcidx in elem.init() {
             if funcidx.to_usize() >= self.funcs.len() {
@@ -649,7 +649,7 @@ impl TypeContext {
                         unimplemented!()
                     }
                 }
-                _ => unimplemented!(),
+                _ => return Err(ValidationError::ConstantExpressionRequired),
             }
         }
         Ok(())
@@ -834,6 +834,7 @@ pub enum ValidationError {
     InvalidTable,
     InvalidType,
     InvalidMemory,
+    ConstantExpressionRequired,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
