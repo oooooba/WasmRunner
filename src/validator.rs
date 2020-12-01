@@ -710,6 +710,44 @@ impl TypeContext {
         }
     }
 
+    fn validate_export(&self, export: &Export) -> Result<(), ValidationError> {
+        self.validate_exportdesc(export.desc())
+    }
+
+    fn validate_exportdesc(&self, exportdesc: &Exportdesc) -> Result<(), ValidationError> {
+        use Exportdesc::*;
+        match exportdesc {
+            Func(funcidx) => {
+                if funcidx.to_usize() < self.funcs.len() {
+                    Ok(())
+                } else {
+                    Err(ValidationError::InvalidFunction)
+                }
+            }
+            Table(tableidx) => {
+                if tableidx.to_usize() < self.tables.len() {
+                    Ok(())
+                } else {
+                    Err(ValidationError::InvalidTable)
+                }
+            }
+            Mem(memidx) => {
+                if memidx.to_usize() < self.mems.len() {
+                    Ok(())
+                } else {
+                    Err(ValidationError::InvalidMemory)
+                }
+            }
+            Global(globalidx) => {
+                if globalidx.to_usize() < self.globals.len() {
+                    Ok(())
+                } else {
+                    unimplemented!()
+                }
+            }
+        }
+    }
+
     fn validate_module(&mut self, module: &Module) -> Result<(), ValidationError> {
         let types = module
             .types()
@@ -787,6 +825,10 @@ impl TypeContext {
 
         for data in module.data() {
             self.validate_data(data)?;
+        }
+
+        for export in module.exports() {
+            self.validate_export(export)?;
         }
 
         for import in module.imports() {
