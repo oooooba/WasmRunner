@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 use crate::instr::*;
 use crate::module::*;
@@ -827,8 +827,13 @@ impl TypeContext {
             self.validate_data(data)?;
         }
 
+        let mut export_name_set = HashSet::new();
         for export in module.exports() {
+            if export_name_set.contains(export.name()) {
+                return Err(ValidationError::DupulicateExportName);
+            }
             self.validate_export(export)?;
+            export_name_set.insert(export.name().clone());
         }
 
         for import in module.imports() {
@@ -877,6 +882,7 @@ pub enum ValidationError {
     InvalidType,
     InvalidMemory,
     ConstantExpressionRequired,
+    DupulicateExportName,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
