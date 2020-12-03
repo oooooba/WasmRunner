@@ -355,13 +355,13 @@ impl TypeContext {
             }
             GetGlobal(idx) => {
                 if idx.to_usize() >= self.globals.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidGlobal);
                 }
                 produce(type_stack, Type(self.globals[idx.to_usize()].typ().clone()));
             }
             SetGlobal(idx) => {
                 if idx.to_usize() >= self.globals.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidGlobal);
                 }
                 if self.globals[idx.to_usize()].mutability() != &Mutability::Var {
                     unimplemented!()
@@ -643,7 +643,7 @@ impl TypeContext {
                 ConstF64(_) => (),
                 GetGlobal(idx) => {
                     if idx.to_usize() >= self.globals.len() {
-                        unimplemented!()
+                        return Err(ValidationError::InvalidGlobal);
                     }
                     if self.globals[idx.to_usize()].mutability() != &Mutability::Const {
                         unimplemented!()
@@ -742,7 +742,7 @@ impl TypeContext {
                 if globalidx.to_usize() < self.globals.len() {
                     Ok(())
                 } else {
-                    unimplemented!()
+                    Err(ValidationError::InvalidGlobal)
                 }
             }
         }
@@ -881,6 +881,7 @@ pub enum ValidationError {
     InvalidTable,
     InvalidType,
     InvalidMemory,
+    InvalidGlobal,
     ConstantExpressionRequired,
     DupulicateExportName,
 }
