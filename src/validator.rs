@@ -109,6 +109,8 @@ struct TypeContext {
     return_type: Option<Resulttype>,
 }
 
+type ImportedContents = (Vec<Functype>, Vec<Tabletype>, Vec<Memtype>, Vec<Globaltype>);
+
 impl TypeContext {
     fn new() -> Self {
         Self {
@@ -421,7 +423,7 @@ impl TypeContext {
                 self.validate_instr_helper_store(memarg, 64, F64, type_stack)?;
             }
             MemoryGrow => {
-                if self.mems.len() < 1 {
+                if self.mems.is_empty() {
                     unimplemented!() // @todo
                 }
                 self.validate_memtype(&self.mems[0])?;
@@ -429,7 +431,7 @@ impl TypeContext {
                 produce(type_stack, Type(I32));
             }
             MemorySize => {
-                if self.mems.len() < 1 {
+                if self.mems.is_empty() {
                     unimplemented!() // @todo
                 }
                 self.validate_memtype(&self.mems[0])?;
@@ -524,7 +526,7 @@ impl TypeContext {
                 produce_with_resulttype(type_stack, functype.return_type());
             }
             CallIndirect(funcidx) => {
-                if self.tables.len() < 1 {
+                if self.tables.is_empty() {
                     return Err(ValidationError::InvalidTable);
                 }
                 if self.tables[0].elemtype() != &Elemtype::Funcref {
@@ -574,7 +576,7 @@ impl TypeContext {
         valtype: Valtype,
         type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
-        if self.mems.len() < 1 {
+        if self.mems.is_empty() {
             unimplemented!() // @todo
         }
         self.validate_memtype(&self.mems[0])?;
@@ -593,7 +595,7 @@ impl TypeContext {
         valtype: Valtype,
         type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
-        if self.mems.len() < 1 {
+        if self.mems.is_empty() {
             unimplemented!() // @todo
         }
         self.validate_memtype(&self.mems[0])?;
@@ -833,7 +835,7 @@ impl TypeContext {
                 return Err(ValidationError::DupulicateExportName);
             }
             self.validate_export(export)?;
-            export_name_set.insert(export.name().clone());
+            export_name_set.insert(export.name().make_clone());
         }
 
         for import in module.imports() {
@@ -846,8 +848,7 @@ impl TypeContext {
     fn extract_imported_contents(
         &self,
         module: &Module,
-    ) -> Result<(Vec<Functype>, Vec<Tabletype>, Vec<Memtype>, Vec<Globaltype>), ValidationError>
-    {
+    ) -> Result<ImportedContents, ValidationError> {
         let mut functypes = Vec::new();
         let mut tabletypes = Vec::new();
         let mut memtypes = Vec::new();
