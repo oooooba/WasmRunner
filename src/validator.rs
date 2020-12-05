@@ -756,6 +756,13 @@ impl TypeContext {
             .iter()
             .map(|functype| functype.make_clone())
             .collect();
+
+        for func in module.funcs() {
+            if func.typ().to_usize() >= module.types().len() {
+                return Err(ValidationError::InvalidType);
+            }
+        }
+
         let mut funcs = module
             .funcs()
             .iter()
@@ -858,7 +865,7 @@ impl TypeContext {
             match import.desc() {
                 Func(typeidx) => {
                     if typeidx.to_usize() >= self.types.len() {
-                        unimplemented!()
+                        return Err(ValidationError::InvalidType);
                     }
                     functypes.push(self.types[typeidx.to_usize()].make_clone());
                 }
