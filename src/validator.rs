@@ -111,6 +111,12 @@ struct TypeContext {
 
 type ImportedContents = (Vec<Functype>, Vec<Tabletype>, Vec<Memtype>, Vec<Globaltype>);
 
+#[allow(dead_code)]
+enum LimitViolationError {
+    MinMaxRelation { min: usize, max: usize },
+    Range { expected: usize, actual: usize },
+}
+
 impl TypeContext {
     fn new() -> Self {
         Self {
@@ -125,26 +131,23 @@ impl TypeContext {
         }
     }
 
-    fn validate_limit(&self, limit: &Limit, k: usize) -> Result<(), ValidationError> {
+    fn validate_limit(&self, limit: &Limit, k: usize) -> Result<(), LimitViolationError> {
         let n = limit.min() as usize;
         if n > k {
-            return Err(ValidationError::Limit(format!(
-                "min value ({}) must be less or equal to {}",
-                n, k
-            )));
+            return Err(LimitViolationError::Range {
+                expected: k,
+                actual: n,
+            });
         }
         if let Some(m) = limit.max().map(|m| m as usize) {
             if m > k {
-                return Err(ValidationError::Limit(format!(
-                    "max value ({}) must be less or equal to {}",
-                    m, k
-                )));
+                return Err(LimitViolationError::Range {
+                    expected: k,
+                    actual: m,
+                });
             }
             if n > m {
-                return Err(ValidationError::Limit(format!(
-                    "min value ({}) must be less or equal to max value ({})",
-                    n, m
-                )));
+                return Err(LimitViolationError::MinMaxRelation { min: n, max: m });
             }
         }
         Ok(())
@@ -175,10 +178,17 @@ impl TypeContext {
 
     fn validate_tabletype(&self, tabletype: &Tabletype) -> Result<(), ValidationError> {
         self.validate_limit(tabletype.limit(), 1usize << 32)
+            .map_err(|_| unimplemented!())
     }
 
     fn validate_memtype(&self, memtype: &Memtype) -> Result<(), ValidationError> {
         self.validate_limit(memtype.limit(), 2usize.pow(16))
+            .map_err(|err| match err {
+                LimitViolationError::MinMaxRelation { .. } => {
+                    ValidationError::LimitInvariantViolation
+                }
+                LimitViolationError::Range { .. } => ValidationError::MemorySize,
+            })
     }
 
     fn validate_globaltype(&self, _globaltype: &Globaltype) -> Result<(), ValidationError> {
@@ -424,7 +434,7 @@ impl TypeContext {
             }
             MemoryGrow => {
                 if self.mems.is_empty() {
-                    unimplemented!() // @todo
+                    return Err(ValidationError::InvalidMemory);
                 }
                 self.validate_memtype(&self.mems[0])?;
                 consume(type_stack, Type(I32))?;
@@ -432,7 +442,7 @@ impl TypeContext {
             }
             MemorySize => {
                 if self.mems.is_empty() {
-                    unimplemented!() // @todo
+                    return Err(ValidationError::InvalidMemory);
                 }
                 self.validate_memtype(&self.mems[0])?;
                 produce(type_stack, Type(I32));
@@ -577,7 +587,7 @@ impl TypeContext {
         type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
         if self.mems.is_empty() {
-            unimplemented!() // @todo
+            return Err(ValidationError::InvalidMemory);
         }
         self.validate_memtype(&self.mems[0])?;
         if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
@@ -596,7 +606,7 @@ impl TypeContext {
         type_stack: &mut TypeStack,
     ) -> Result<(), ValidationError> {
         if self.mems.is_empty() {
-            unimplemented!() // @todo
+            return Err(ValidationError::InvalidMemory);
         }
         self.validate_memtype(&self.mems[0])?;
         if 2u32.saturating_pow(memarg.align()) > bit_width / 8 {
@@ -875,7 +885,7 @@ impl TypeContext {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ValidationError {
-    Limit(String),
+    //Limit(String),
     Module(String),
     TypeMismatch,
     MemoryAccessAlignmentViolation,
@@ -891,6 +901,8 @@ pub enum ValidationError {
     MutableGlobalRequired,
     MultipleTables,
     MultipleMemories,
+    LimitInvariantViolation,
+    MemorySize,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
