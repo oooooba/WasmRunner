@@ -366,7 +366,7 @@ impl TypeContext {
                     return Err(ValidationError::InvalidGlobal);
                 }
                 if self.globals[idx.to_usize()].mutability() != &Mutability::Var {
-                    unimplemented!()
+                    return Err(ValidationError::MutableGlobalRequired);
                 }
                 consume(type_stack, Type(self.globals[idx.to_usize()].typ().clone()))?;
             }
@@ -686,11 +686,11 @@ impl TypeContext {
 
     fn validate_global(&mut self, global: &Global) -> Result<(), ValidationError> {
         self.validate_globaltype(global.typ())?;
+        self.validate_const_expr(global.init())?;
         self.validate_expr(
             global.init(),
             &Resulttype::new(vec![global.typ().typ().clone()]),
-        )?;
-        self.validate_const_expr(global.init())
+        )
     }
 
     fn validate_import(&self, import: &Import) -> Result<(), ValidationError> {
@@ -800,17 +800,22 @@ impl TypeContext {
             self.validate_functype(functype)?;
         }
 
-        let (mut imported_funcs, mut imported_tables, mut imported_mems, mut imported_globals) =
+        let (mut imported_funcs, mut imported_tables, mut imported_mems, imported_globals) =
             self.extract_imported_contents(module)?;
+
+        self.globals = imported_globals;
+        for global in module.globals() {
+            self.validate_global(global)?;
+        }
+
         imported_funcs.append(&mut funcs);
         imported_tables.append(&mut tables);
         imported_mems.append(&mut mems);
-        imported_globals.append(&mut globals);
 
         self.funcs = imported_funcs;
         self.tables = imported_tables;
         self.mems = imported_mems;
-        self.globals = imported_globals;
+        self.globals.append(&mut globals);
 
         for func in module.funcs() {
             self.validate_func(func)?;
@@ -822,10 +827,6 @@ impl TypeContext {
 
         for mem in module.mems() {
             self.validate_mem(mem)?;
-        }
-
-        for global in module.globals() {
-            self.validate_global(global)?;
         }
 
         for elem in module.elems() {
@@ -892,6 +893,7 @@ pub enum ValidationError {
     InvalidGlobal,
     ConstantExpressionRequired,
     DupulicateExportName,
+    MutableGlobalRequired,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
