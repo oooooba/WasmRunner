@@ -780,13 +780,6 @@ impl TypeContext {
             .map(|global| global.typ().clone())
             .collect();
 
-        if mems.len() > 1 {
-            return Err(ValidationError::Module(format!(
-                "size of mems in module ({}) must be less or equal to 1",
-                mems.len()
-            )));
-        }
-
         self.types = types;
 
         for functype in module.types() {
@@ -809,6 +802,9 @@ impl TypeContext {
         }
 
         imported_mems.append(&mut mems);
+        if imported_mems.len() > 1 {
+            return Err(ValidationError::MultipleMemories);
+        }
 
         self.funcs = imported_funcs;
         self.tables = imported_tables;
@@ -893,6 +889,7 @@ pub enum ValidationError {
     DupulicateExportName,
     MutableGlobalRequired,
     MultipleTables,
+    MultipleMemories,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
