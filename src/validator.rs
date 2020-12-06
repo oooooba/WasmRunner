@@ -780,13 +780,6 @@ impl TypeContext {
             .map(|global| global.typ().clone())
             .collect();
 
-        if tables.len() > 1 {
-            return Err(ValidationError::Module(format!(
-                "size of tables in module ({}) must be less or equal to 1",
-                tables.len()
-            )));
-        }
-
         if mems.len() > 1 {
             return Err(ValidationError::Module(format!(
                 "size of mems in module ({}) must be less or equal to 1",
@@ -809,7 +802,12 @@ impl TypeContext {
         }
 
         imported_funcs.append(&mut funcs);
+
         imported_tables.append(&mut tables);
+        if imported_tables.len() > 1 {
+            return Err(ValidationError::MultipleTables);
+        }
+
         imported_mems.append(&mut mems);
 
         self.funcs = imported_funcs;
@@ -894,6 +892,7 @@ pub enum ValidationError {
     ConstantExpressionRequired,
     DupulicateExportName,
     MutableGlobalRequired,
+    MultipleTables,
 }
 
 pub fn validate(module: &Module) -> Result<(), ValidationError> {
