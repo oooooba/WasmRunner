@@ -337,19 +337,19 @@ impl TypeContext {
 
             GetLocal(idx) => {
                 if idx.to_usize() >= self.locals.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidLocal);
                 }
                 produce(type_stack, Type(self.locals[idx.to_usize()].clone()));
             }
             SetLocal(idx) => {
                 if idx.to_usize() >= self.locals.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidLocal);
                 }
                 consume(type_stack, Type(self.locals[idx.to_usize()].clone()))?;
             }
             TeeLocal(idx) => {
                 if idx.to_usize() >= self.locals.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidLocal);
                 }
                 let t = self.locals[idx.to_usize()].clone();
                 consume(type_stack, Type(t.clone()))?;
@@ -885,6 +885,7 @@ pub enum ValidationError {
     InvalidType,
     InvalidMemory,
     InvalidGlobal,
+    InvalidLocal,
     ConstantExpressionRequired,
     DupulicateExportName,
     MutableGlobalRequired,
