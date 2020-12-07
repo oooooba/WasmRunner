@@ -712,7 +712,7 @@ impl TypeContext {
         match importdesc {
             Func(typeidx) => {
                 if typeidx.to_usize() >= self.types.len() {
-                    unimplemented!()
+                    return Err(ValidationError::InvalidType);
                 }
                 self.validate_functype(&self.types[typeidx.to_usize()])
             }
@@ -796,6 +796,10 @@ impl TypeContext {
             self.validate_functype(functype)?;
         }
 
+        for import in module.imports() {
+            self.validate_import(import)?;
+        }
+
         let (mut imported_funcs, mut imported_tables, mut imported_mems, imported_globals) =
             self.extract_imported_contents(module)?;
 
@@ -848,10 +852,6 @@ impl TypeContext {
             }
             self.validate_export(export)?;
             export_name_set.insert(export.name().make_clone());
-        }
-
-        for import in module.imports() {
-            self.validate_import(import)?;
         }
 
         Ok(())
