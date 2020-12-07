@@ -340,7 +340,7 @@ impl TypeContext {
                 let t1 = consume(type_stack, AnyType)?;
                 let t2 = consume(type_stack, AnyType)?;
                 if !(t1 == AnyType || t2 == AnyType || t1 == t2) {
-                    unimplemented!() // @todo
+                    return Err(ValidationError::TypeMismatch);
                 }
                 produce(type_stack, t1)
             }
