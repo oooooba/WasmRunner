@@ -854,6 +854,19 @@ impl TypeContext {
             export_name_set.insert(export.name().make_clone());
         }
 
+        if let Some(funcidx) = module.start() {
+            if funcidx.to_usize() >= self.funcs.len() {
+                return Err(ValidationError::InvalidFunction);
+            }
+            let functype = &self.funcs[funcidx.to_usize()];
+            if functype.param_type() != &Resulttype::new(vec![]) {
+                return Err(ValidationError::InvalidStartFunction);
+            }
+            if functype.return_type() != &Resulttype::new(vec![]) {
+                return Err(ValidationError::InvalidStartFunction);
+            }
+        }
+
         Ok(())
     }
 
@@ -896,6 +909,7 @@ pub enum ValidationError {
     InvalidMemory,
     InvalidGlobal,
     InvalidLocal,
+    InvalidStartFunction,
     ConstantExpressionRequired,
     DupulicateExportName,
     MutableGlobalRequired,
