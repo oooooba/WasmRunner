@@ -178,7 +178,12 @@ impl TypeContext {
 
     fn validate_tabletype(&self, tabletype: &Tabletype) -> Result<(), ValidationError> {
         self.validate_limit(tabletype.limit(), 1usize << 32)
-            .map_err(|_| unimplemented!())
+            .map_err(|err| match err {
+                LimitViolationError::MinMaxRelation { .. } => {
+                    ValidationError::LimitInvariantViolation
+                }
+                LimitViolationError::Range { .. } => unreachable!(),
+            })
     }
 
     fn validate_memtype(&self, memtype: &Memtype) -> Result<(), ValidationError> {
@@ -829,16 +834,16 @@ impl TypeContext {
             self.validate_func(func)?;
         }
 
+        for elem in module.elems() {
+            self.validate_elem(elem)?;
+        }
+
         for table in module.tables() {
             self.validate_table(table)?;
         }
 
         for mem in module.mems() {
             self.validate_mem(mem)?;
-        }
-
-        for elem in module.elems() {
-            self.validate_elem(elem)?;
         }
 
         for data in module.data() {
