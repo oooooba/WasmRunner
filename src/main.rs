@@ -8,7 +8,7 @@ use wasm_runner::module::Name;
 use wasm_runner::types::{
     Elemtype, Functype, Globaltype, Limit, Memtype, Mutability, Resulttype, Tabletype, Valtype,
 };
-use wasm_runner::validator::validate;
+use wasm_runner::validator::{validate, ValidationError};
 use wasm_runner::value::{F32Bytes, F64Bytes, Value, ValueKind, WasmRunnerResult};
 
 // test
@@ -77,6 +77,17 @@ fn run_instantiate_action<'a>(
     }
     validate(&module).unwrap();
     instantiate(ctx, &module)
+}
+
+fn run_validate_action<'a>(module: &mut Module<'a>) -> Result<(), ValidationError> {
+    let name = module.id.map(|id| Name::new(id.name().to_string()));
+    let mut reader = &module.encode().unwrap()[..];
+    let mut decoder = Decoder::new(&mut reader);
+    let mut module = decoder.run().expect("should success");
+    if let Some(name) = name {
+        module.set_name(name);
+    }
+    validate(&module)
 }
 
 fn run_test(wast_file_path: &str) {
@@ -248,6 +259,40 @@ fn run_test(wast_file_path: &str) {
 
                 println!("{}: trap = {:?}", func_name, result_err);
                 assert_eq!(result_err, expected_trap);
+                ctx.reset();
+            }
+            AssertInvalid {
+                mut module,
+                message,
+                ..
+            } => {
+                let expected_error = match message {
+                    "alignment must not be larger than natural" => {
+                        ValidationError::MemoryAccessAlignmentViolation
+                    }
+                    "type mismatch" => ValidationError::TypeMismatch,
+                    "unknown label" => ValidationError::InvalidLabel,
+                    "unknown function" => ValidationError::InvalidFunction,
+                    "unknown table" => ValidationError::InvalidTable,
+                    "unknown type" => ValidationError::InvalidType,
+                    "unknown memory" => ValidationError::InvalidMemory,
+                    "unknown global" => ValidationError::InvalidGlobal,
+                    "unknown local" => ValidationError::InvalidLocal,
+                    "start function" => ValidationError::InvalidStartFunction,
+                    "constant expression required" => ValidationError::ConstantExpressionRequired,
+                    "duplicate export name" => ValidationError::DupulicateExportName,
+                    "global is immutable" => ValidationError::MutableGlobalRequired,
+                    "multiple tables" => ValidationError::MultipleTables,
+                    "multiple memories" => ValidationError::MultipleMemories,
+                    "size minimum must not be greater than maximum" => {
+                        ValidationError::LimitInvariantViolation
+                    }
+                    "memory size must be at most 65536 pages (4GiB)" => ValidationError::MemorySize,
+                    _ => unimplemented!("messag=\"{}\"", message),
+                };
+                let result_err = run_validate_action(&mut module).unwrap_err();
+                println!("{}: error = {:?}", "invalid module", result_err);
+                assert_eq!(result_err, expected_error);
                 ctx.reset();
             }
             _ => (),
