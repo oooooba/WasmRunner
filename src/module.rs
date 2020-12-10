@@ -83,7 +83,7 @@ impl Module {
     }
 
     pub fn start(&self) -> Option<Funcidx> {
-        self.start.clone()
+        self.start
     }
 
     pub fn elems(&self) -> &Vec<Elem> {
