@@ -170,7 +170,7 @@ impl Store {
     pub fn alloctable(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
         let addr = Tableaddr(Address(self.tables.len()));
         let elem = vec![None; tabletype.limit().min() as usize];
-        let tableinst = Tableinst::new(elem, tabletype.limit().max().clone());
+        let tableinst = Tableinst::new(elem, *tabletype.limit().max());
         self.tables.push(tableinst);
         Ok(addr)
     }
@@ -178,7 +178,7 @@ impl Store {
     pub fn allocmem(&mut self, memtype: &Memtype) -> Result<Memaddr, ExecutionError> {
         let addr = Memaddr(Address(self.mems.len()));
         let n = memtype.limit().min() as usize;
-        let m = memtype.limit().max().clone();
+        let m = *memtype.limit().max();
         let data = vec![0u8; n * PAGE_SIZE];
         let meminst = Meminst::new(data, m);
         self.mems.push(meminst);
@@ -257,12 +257,10 @@ impl Store {
         for export in module.exports() {
             use Exportdesc::*;
             let value = match export.desc() {
-                Func(funcidx) => Extarnval::Func(funcaddrs_mod[funcidx.to_usize()].clone()),
-                Table(tableidx) => Extarnval::Table(tableaddrs_mod[tableidx.to_usize()].clone()),
-                Mem(memidx) => Extarnval::Mem(memaddrs_mod[memidx.to_usize()].clone()),
-                Global(globalidx) => {
-                    Extarnval::Global(globaladdrs_mod[globalidx.to_usize()].clone())
-                }
+                Func(funcidx) => Extarnval::Func(funcaddrs_mod[funcidx.to_usize()]),
+                Table(tableidx) => Extarnval::Table(tableaddrs_mod[tableidx.to_usize()]),
+                Mem(memidx) => Extarnval::Mem(memaddrs_mod[memidx.to_usize()]),
+                Global(globalidx) => Extarnval::Global(globaladdrs_mod[globalidx.to_usize()]),
             };
             let name = export.name().make_clone();
             let exportinst = Exportinst::new(name, value);
@@ -376,22 +374,22 @@ impl Moduleinst {
 
     pub fn resolve_funcaddr(&self, funcidx: Funcidx) -> Result<Funcaddr, ExecutionError> {
         // @todo check index
-        Ok(self.0.borrow().funcaddrs[funcidx.to_usize()].clone())
+        Ok(self.0.borrow().funcaddrs[funcidx.to_usize()])
     }
 
     pub fn resolve_tableaddr(&self, tableidx: Tableidx) -> Result<Tableaddr, ExecutionError> {
         // @todo check index
-        Ok(self.0.borrow().tableaddrs[tableidx.to_usize()].clone())
+        Ok(self.0.borrow().tableaddrs[tableidx.to_usize()])
     }
 
     pub fn resolve_memaddr(&self, memidx: Memidx) -> Result<Memaddr, ExecutionError> {
         // @todo check index
-        Ok(self.0.borrow().memaddrs[memidx.to_usize()].clone())
+        Ok(self.0.borrow().memaddrs[memidx.to_usize()])
     }
 
     pub fn resolve_globaladdr(&self, globalidx: Globalidx) -> Result<Globaladdr, ExecutionError> {
         // @todo check index
-        Ok(self.0.borrow().globaladdrs[globalidx.to_usize()].clone())
+        Ok(self.0.borrow().globaladdrs[globalidx.to_usize()])
     }
 
     pub fn resolve_type(&self, typeidx: Typeidx) -> Result<Functype, ExecutionError> {
