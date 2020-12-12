@@ -25,7 +25,7 @@ fn decode_byte_with_size<R: Read>(reader: &mut R) -> Result<(u8, usize), DecodeE
     let mut buf = [0; 1];
     reader
         .read_exact(&mut buf)
-        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
     Ok((buf[0], 1))
 }
 
@@ -40,7 +40,7 @@ fn decode_u32_with_size<R: Read>(reader: &mut R) -> Result<(u32, usize), DecodeE
         let mut buf = [0; 1];
         reader
             .read_exact(&mut buf)
-            .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+            .map_err(|_| DecodeError::UnexpectedEnd)?;
         read_size += 1;
         let b = buf[0] as u64;
         result |= (b & 0x7F) << (i * 7);
@@ -65,7 +65,7 @@ fn decode_s32_with_size<R: Read>(reader: &mut R) -> Result<(i32, usize), DecodeE
         let mut buf = [0; 1];
         reader
             .read_exact(&mut buf)
-            .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+            .map_err(|_| DecodeError::UnexpectedEnd)?;
         read_size += 1;
         let b = buf[0] as u64;
         result |= (b & 0x7F) << (i * 7);
@@ -92,7 +92,7 @@ fn decode_s64<R: Read>(reader: &mut R) -> Result<i64, DecodeError> {
         let mut buf = [0; 1];
         reader
             .read_exact(&mut buf)
-            .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+            .map_err(|_| DecodeError::UnexpectedEnd)?;
         read_size += 1;
         let b = buf[0] as u128;
         result |= (b & 0x7F) << (i * 7);
@@ -112,7 +112,7 @@ fn decode_f32<R: Read>(reader: &mut R) -> Result<f32, DecodeError> {
     let mut buf = [0; 4];
     reader
         .read_exact(&mut buf)
-        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
     Ok(f32::from_le_bytes(buf))
 }
 
@@ -120,7 +120,7 @@ fn decode_f64<R: Read>(reader: &mut R) -> Result<f64, DecodeError> {
     let mut buf = [0; 8];
     reader
         .read_exact(&mut buf)
-        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
     Ok(f64::from_le_bytes(buf))
 }
 
@@ -644,7 +644,7 @@ fn decode_section<R: Read>(reader: &mut R) -> Result<(Section, usize), DecodeErr
     let mut contents = vec![0; size as usize];
     reader
         .read_exact(&mut contents)
-        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
     read_size += size as usize;
     Ok((Section { id, size, contents }, read_size))
 }
@@ -828,7 +828,7 @@ fn decode_code<R: Read>(reader: &mut R) -> Result<FuncCode, DecodeError> {
     let mut buf = vec![0; size];
     reader
         .read_exact(&mut buf)
-        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
     let mut reader = &buf[..];
     decode_func(&mut reader)
 }
@@ -902,7 +902,7 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
     let mut buf = Vec::new();
     let read_bytes = reader
         .read_to_end(&mut buf)
-        .map_err(|e| DecodeError::ReadFailure(e.to_string()))?;
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
     let mut reader = &buf[..];
 
     let mut sections = Vec::new();
@@ -1077,8 +1077,8 @@ impl<'a, R: Read> Decoder<'a, R> {
 pub enum DecodeError {
     MagicNumberMismatch,
     VersionMismatch,
+    UnexpectedEnd,
     UnknownSectionId(u8),
-    ReadFailure(String),
     OutOfRangeValue(Valtype),
     UnknownValtype(u8),
     UnknownFunctype(u8),
@@ -1099,8 +1099,8 @@ impl fmt::Display for DecodeError {
         match self {
             MagicNumberMismatch => write!(f, "MagicNumberMismatch:"),
             VersionMismatch => write!(f, "VersionMismatch:"),
+            UnexpectedEnd => write!(f, "VersionMismatch:"),
             UnknownSectionId(x) => write!(f, "UnknownSectionId: {}", x),
-            ReadFailure(detail) => write!(f, "ReadFailure: {}", detail.to_string()),
             OutOfRangeValue(typ) => {
                 write!(f, "OutOfRangeValue: can represent in range of {:?}", typ)
             }
