@@ -649,6 +649,22 @@ fn decode_section<R: Read>(reader: &mut R) -> Result<(Section, usize), DecodeErr
     Ok((Section { id, size, contents }, read_size))
 }
 
+fn decode_customsec(section: &Section) -> Result<(Name, Vec<u8>), DecodeError> {
+    if section.id != SectionId::Custom {
+        return Err(DecodeError::DecoderStateInconsistency(format!(
+            "must be custom section, but id is {:?}",
+            section.id
+        )));
+    }
+    let mut reader = &section.contents[..];
+    let name = decode_name(&mut reader)?;
+    let mut content = Vec::new();
+    reader
+        .read_to_end(&mut content)
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
+    Ok((name, content))
+}
+
 fn decode_typesec(section: &Section) -> Result<Vec<Functype>, DecodeError> {
     if section.id != SectionId::Type {
         return Err(DecodeError::DecoderStateInconsistency(format!(
@@ -919,20 +935,22 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         )));
     }
 
-    sections.reverse();
-
-    let mut sections = {
-        let len = sections.len();
-        let sections: Vec<Section> = sections
-            .into_iter()
-            .filter(|section| section.id != SectionId::Custom)
-            .collect();
-        if sections.len() != len {
-            // @todo handle Custom Sections correctly
-            eprintln!("custom section is not supported");
+    let (mut sections, custom_sections) = {
+        let mut target_sections = Vec::new();
+        let mut custom_sections = Vec::new();
+        for section in sections.into_iter().rev() {
+            if section.id == SectionId::Custom {
+                custom_sections.push(section);
+            } else {
+                target_sections.push(section);
+            }
         }
-        sections
+        (target_sections, custom_sections)
     };
+
+    for section in custom_sections {
+        decode_customsec(&section)?;
+    }
 
     let types = match sections.last() {
         Some(section) if section.id == SectionId::Type => {
