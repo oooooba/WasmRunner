@@ -1057,9 +1057,7 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
         (None, Some(code)) if code.is_empty() => None,
         (None, None) => None,
         _ => {
-            return Err(DecodeError::InvalidHeaderFormat(
-                "mismatches function declarations and definitions".to_string(),
-            ))
+            return Err(DecodeError::FunctionDeclarationAndDefinitionLengthMismatch);
         }
     };
 
@@ -1097,6 +1095,7 @@ pub enum DecodeError {
     VersionMismatch,
     UnexpectedEnd,
     UnknownSectionId(u8),
+    FunctionDeclarationAndDefinitionLengthMismatch,
     OutOfRangeValue(Valtype),
     UnknownValtype(u8),
     UnknownFunctype(u8),
@@ -1119,6 +1118,9 @@ impl fmt::Display for DecodeError {
             VersionMismatch => write!(f, "VersionMismatch:"),
             UnexpectedEnd => write!(f, "VersionMismatch:"),
             UnknownSectionId(x) => write!(f, "UnknownSectionId: {}", x),
+            FunctionDeclarationAndDefinitionLengthMismatch => {
+                write!(f, "FunctionDeclarationAndDefinitionLengthMismatch")
+            }
             OutOfRangeValue(typ) => {
                 write!(f, "OutOfRangeValue: can represent in range of {:?}", typ)
             }
