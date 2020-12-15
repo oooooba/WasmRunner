@@ -126,7 +126,8 @@ fn decode_f64<R: Read>(reader: &mut R) -> Result<f64, DecodeError> {
 
 fn decode_name<R: Read>(reader: &mut R) -> Result<Name, DecodeError> {
     let bytes = decode_vec(reader, decode_byte)?;
-    let name = String::from_utf8(bytes).map_err(|e| DecodeError::InvalidName(e.to_string()))?;
+    let name =
+        String::from_utf8(bytes).map_err(|e| DecodeError::InvalidUtf8Sequence(e.to_string()))?;
     Ok(Name::new(name))
 }
 
@@ -1103,7 +1104,7 @@ pub enum DecodeError {
     UnknownMut(u8),
     UnknownExportdesc(u8),
     UnknownElemtype(u8),
-    InvalidName(String),
+    InvalidUtf8Sequence(String),
     InvalidInstr(String),
     InvalidFunc(usize),
     InvalidHeaderFormat(String),
@@ -1130,7 +1131,7 @@ impl fmt::Display for DecodeError {
             UnknownMut(x) => write!(f, "UnknownMut: {}", x),
             UnknownExportdesc(x) => write!(f, "UnknownExportdesc: {}", x),
             UnknownElemtype(x) => write!(f, "UnknownElemtype: {}", x),
-            InvalidName(detail) => write!(f, "InvalidName: {}", detail),
+            InvalidUtf8Sequence(detail) => write!(f, "InvalidUtf8Sequence: {}", detail),
             InvalidInstr(detail) => write!(f, "InvalidInstr: {}", detail),
             InvalidFunc(x) => write!(f, "InvalidFunc: {}", x),
             InvalidHeaderFormat(detail) => write!(f, "InvalidHeaderFormat: {}", detail),
