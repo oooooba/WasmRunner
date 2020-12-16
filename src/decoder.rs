@@ -34,24 +34,23 @@ fn decode_byte<R: Read>(reader: &mut R) -> Result<u8, DecodeError> {
 }
 
 fn decode_u32_with_size<R: Read>(reader: &mut R) -> Result<(u32, usize), DecodeError> {
-    let mut read_size = 0;
     let mut result = 0u64;
     for i in 0..5 {
         let mut buf = [0; 1];
         reader
             .read_exact(&mut buf)
             .map_err(|_| DecodeError::UnexpectedEnd)?;
-        read_size += 1;
         let b = buf[0] as u64;
         result |= (b & 0x7F) << (i * 7);
         if (b & 0x80) == 0 {
-            break;
+            if result <= (u32::MAX as u64) {
+                return Ok((result as u32, i + 1));
+            } else {
+                return Err(DecodeError::OutOfRangeValue(Valtype::I32));
+            }
         }
     }
-    if result > (u32::MAX as u64) {
-        return Err(DecodeError::OutOfRangeValue(Valtype::I32));
-    }
-    Ok((result as u32, read_size))
+    Err(DecodeError::OutOfRangeValue(Valtype::I32))
 }
 
 fn decode_u32<R: Read>(reader: &mut R) -> Result<u32, DecodeError> {
