@@ -890,14 +890,15 @@ fn decode_data<R: Read>(reader: &mut R) -> Result<Data, DecodeError> {
 }
 
 fn decode_magic<R: Read>(reader: &mut R) -> Result<(), DecodeError> {
-    let magic = [0x00, 0x61, 0x73, 0x6D];
-    for code in magic.iter() {
-        let b = decode_byte(reader)?;
-        if b != *code {
-            return Err(DecodeError::MagicNumberMismatch);
-        }
+    let mut buf = [0; 4];
+    reader
+        .read_exact(&mut buf)
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
+    if buf == [0x00, 0x61, 0x73, 0x6D] {
+        Ok(())
+    } else {
+        Err(DecodeError::MagicNumberMismatch)
     }
-    Ok(())
 }
 
 fn decode_version<R: Read>(reader: &mut R) -> Result<(), DecodeError> {
