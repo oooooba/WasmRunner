@@ -902,14 +902,15 @@ fn decode_magic<R: Read>(reader: &mut R) -> Result<(), DecodeError> {
 }
 
 fn decode_version<R: Read>(reader: &mut R) -> Result<(), DecodeError> {
-    let version = [0x01, 0x00, 0x00, 0x00];
-    for code in version.iter() {
-        let b = decode_byte(reader)?;
-        if b != *code {
-            return Err(DecodeError::VersionMismatch);
-        }
+    let mut buf = [0; 4];
+    reader
+        .read_exact(&mut buf)
+        .map_err(|_| DecodeError::UnexpectedEnd)?;
+    if buf == [0x01, 0x00, 0x00, 0x00] {
+        Ok(())
+    } else {
+        Err(DecodeError::VersionMismatch)
     }
-    Ok(())
 }
 
 fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
