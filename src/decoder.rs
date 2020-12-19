@@ -1042,18 +1042,13 @@ fn decode_module<R: Read>(reader: &mut R) -> Result<Module, DecodeError> {
     };
 
     let funcs = match (func_declarations, code) {
-        (Some(func_declarations), Some(code)) => {
-            if func_declarations.len() != code.len() {
-                return Err(DecodeError::InvalidHeaderFormat(format!("mismatches number of function declarations ({}) and actual function definitions ({})",func_declarations.len() , code.len())));
-            }
-            Some(
-                func_declarations
-                    .into_iter()
-                    .zip(code.into_iter())
-                    .map(|(typ, c)| Func::new(typ, c.locals, c.body))
-                    .collect(),
-            )
-        }
+        (Some(func_declarations), Some(code)) if func_declarations.len() == code.len() => Some(
+            func_declarations
+                .into_iter()
+                .zip(code.into_iter())
+                .map(|(typ, c)| Func::new(typ, c.locals, c.body))
+                .collect(),
+        ),
         (Some(func_declarations), None) if func_declarations.is_empty() => None,
         (None, Some(code)) if code.is_empty() => None,
         (None, None) => None,
