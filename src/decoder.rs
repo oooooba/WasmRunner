@@ -291,10 +291,7 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
             let typeidx = decode_typeidx(reader)?;
             let b = decode_byte(reader)?;
             if b != 0 {
-                return Err(DecodeError::InvalidInstr(format!(
-                    "invalid delimiter ({}) of call_indirect instr",
-                    b
-                )));
+                return Err(DecodeError::ZeroFlagExpected);
             }
             Ok(Instr::new(CallIndirect(typeidx)))
         }
@@ -379,14 +376,14 @@ fn decode_instr<R: Read>(reader: &mut R) -> Result<Instr, DecodeError> {
         0x3F => {
             let b = decode_byte(reader)?;
             if b != 0 {
-                unimplemented!() // @todo raise Error
+                return Err(DecodeError::ZeroFlagExpected);
             }
             Ok(Instr::new(MemorySize))
         }
         0x40 => {
             let b = decode_byte(reader)?;
             if b != 0 {
-                unimplemented!() // @todo raise Error
+                return Err(DecodeError::ZeroFlagExpected);
             }
             Ok(Instr::new(MemoryGrow))
         }
@@ -1106,7 +1103,7 @@ pub enum DecodeError {
     UnknownExportdesc(u8),
     UnknownElemtype(u8),
     InvalidUtf8Sequence(String),
-    InvalidInstr(String),
+    ZeroFlagExpected,
     InvalidFunc(usize),
     InvalidHeaderFormat(String),
     DecoderStateInconsistency(String),
@@ -1133,7 +1130,7 @@ impl fmt::Display for DecodeError {
             UnknownExportdesc(x) => write!(f, "UnknownExportdesc: {}", x),
             UnknownElemtype(x) => write!(f, "UnknownElemtype: {}", x),
             InvalidUtf8Sequence(detail) => write!(f, "InvalidUtf8Sequence: {}", detail),
-            InvalidInstr(detail) => write!(f, "InvalidInstr: {}", detail),
+            ZeroFlagExpected => write!(f, "ZeroFlagExpected:"),
             InvalidFunc(x) => write!(f, "InvalidFunc: {}", x),
             InvalidHeaderFormat(detail) => write!(f, "InvalidHeaderFormat: {}", detail),
             DecoderStateInconsistency(detail) => write!(f, "DecoderStateInconsistency: {}", detail),
