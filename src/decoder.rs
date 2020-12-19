@@ -848,12 +848,14 @@ fn decode_code<R: Read>(reader: &mut R) -> Result<FuncCode, DecodeError> {
 
 fn decode_func<R: Read>(reader: &mut R) -> Result<FuncCode, DecodeError> {
     let locals = decode_vec(reader, decode_local)?;
-    let mut locals_result = Vec::new();
-    for mut local in locals.into_iter() {
-        locals_result.append(&mut local);
+    let num_locals = locals.iter().map(|(_, n)| n).sum::<usize>();
+    if num_locals > u32::MAX as usize {
+        return Err(DecodeError::InvalidFunc(num_locals));
     }
-    if locals_result.len() > u32::MAX as usize {
-        return Err(DecodeError::InvalidFunc(locals_result.len()));
+    let mut locals_result = Vec::new();
+    for (t, n) in locals {
+        let mut local = iter::repeat(t).take(n as usize).collect();
+        locals_result.append(&mut local);
     }
     let e = decode_expr(reader)?;
     Ok(FuncCode {
@@ -862,10 +864,10 @@ fn decode_func<R: Read>(reader: &mut R) -> Result<FuncCode, DecodeError> {
     })
 }
 
-fn decode_local<R: Read>(reader: &mut R) -> Result<Vec<Valtype>, DecodeError> {
+fn decode_local<R: Read>(reader: &mut R) -> Result<(Valtype, usize), DecodeError> {
     let n = decode_u32(reader)?;
     let t = decode_valtype(reader)?;
-    Ok(iter::repeat(t).take(n as usize).collect())
+    Ok((t, n as usize))
 }
 
 fn decode_datasec(section: &Section) -> Result<Vec<Data>, DecodeError> {
