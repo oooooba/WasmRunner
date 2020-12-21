@@ -47,6 +47,14 @@ impl<'a, R: Read> Decoder<'a, R> {
         self.decode_module()
     }
 
+    fn read(&mut self, buf: &mut [u8]) -> Result<(), DecodeError> {
+        self.reader
+            .read_exact(buf)
+            .map_err(|_| DecodeError::UnexpectedEnd)?;
+        self.read_bytes += buf.len();
+        Ok(())
+    }
+
     fn decode_vec<E>(
         &mut self,
         elem_decoder: fn(&mut Self) -> Result<E, DecodeError>,
@@ -62,10 +70,7 @@ impl<'a, R: Read> Decoder<'a, R> {
 
     fn decode_byte(&mut self) -> Result<u8, DecodeError> {
         let mut buf = [0; 1];
-        self.reader
-            .read_exact(&mut buf)
-            .map_err(|_| DecodeError::UnexpectedEnd)?;
-        self.read_bytes += buf.len();
+        self.read(&mut buf)?;
         Ok(buf[0])
     }
 
@@ -73,10 +78,7 @@ impl<'a, R: Read> Decoder<'a, R> {
         let mut result = 0u64;
         for i in 0..5 {
             let mut buf = [0; 1];
-            self.reader
-                .read_exact(&mut buf)
-                .map_err(|_| DecodeError::UnexpectedEnd)?;
-            self.read_bytes += buf.len();
+            self.read(&mut buf)?;
             let b = buf[0] as u64;
             result |= (b & 0x7F) << (i * 7);
             if (b & 0x80) == 0 {
@@ -95,10 +97,7 @@ impl<'a, R: Read> Decoder<'a, R> {
         let mut result = 0u64;
         for i in 0..5 {
             let mut buf = [0; 1];
-            self.reader
-                .read_exact(&mut buf)
-                .map_err(|_| DecodeError::UnexpectedEnd)?;
-            self.read_bytes += buf.len();
+            self.read(&mut buf)?;
             read_size += 1;
             let b = buf[0] as u64;
             result |= (b & 0x7F) << (i * 7);
@@ -119,10 +118,7 @@ impl<'a, R: Read> Decoder<'a, R> {
         let mut result = 0u128;
         for i in 0..10 {
             let mut buf = [0; 1];
-            self.reader
-                .read_exact(&mut buf)
-                .map_err(|_| DecodeError::UnexpectedEnd)?;
-            self.read_bytes += buf.len();
+            self.read(&mut buf)?;
             read_size += 1;
             let b = buf[0] as u128;
             result |= (b & 0x7F) << (i * 7);
@@ -140,19 +136,13 @@ impl<'a, R: Read> Decoder<'a, R> {
 
     fn decode_f32(&mut self) -> Result<f32, DecodeError> {
         let mut buf = [0; 4];
-        self.reader
-            .read_exact(&mut buf)
-            .map_err(|_| DecodeError::UnexpectedEnd)?;
-        self.read_bytes += buf.len();
+        self.read(&mut buf)?;
         Ok(f32::from_le_bytes(buf))
     }
 
     fn decode_f64(&mut self) -> Result<f64, DecodeError> {
         let mut buf = [0; 8];
-        self.reader
-            .read_exact(&mut buf)
-            .map_err(|_| DecodeError::UnexpectedEnd)?;
-        self.read_bytes += buf.len();
+        self.read(&mut buf)?;
         Ok(f64::from_le_bytes(buf))
     }
 
@@ -695,10 +685,7 @@ impl<'a, R: Read> Decoder<'a, R> {
 
     fn decode_magic(&mut self) -> Result<(), DecodeError> {
         let mut buf = [0; 4];
-        self.reader
-            .read_exact(&mut buf)
-            .map_err(|_| DecodeError::UnexpectedEnd)?;
-        self.read_bytes += buf.len();
+        self.read(&mut buf)?;
         if buf == [0x00, 0x61, 0x73, 0x6D] {
             Ok(())
         } else {
@@ -807,10 +794,7 @@ impl<'a, R: Read> Decoder<'a, R> {
 
     fn decode_version(&mut self) -> Result<(), DecodeError> {
         let mut buf = [0; 4];
-        self.reader
-            .read_exact(&mut buf)
-            .map_err(|_| DecodeError::UnexpectedEnd)?;
-        self.read_bytes += buf.len();
+        self.read(&mut buf)?;
         if buf == [0x01, 0x00, 0x00, 0x00] {
             Ok(())
         } else {
