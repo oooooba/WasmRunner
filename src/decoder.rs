@@ -832,47 +832,113 @@ impl<'a, R: Read> Decoder<'a, R> {
                 }
                 SectionId::Type => {
                     assert_eq!(types, None);
-                    types = Some(self.decode_typesec()?);
+                    types = Some(self.decode_typesec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Import => {
                     assert_eq!(imports, None);
-                    imports = Some(self.decode_importsec()?);
+                    imports = Some(self.decode_importsec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Function => {
                     assert_eq!(func_declarations, None);
-                    func_declarations = Some(self.decode_funcsec()?);
+                    func_declarations = Some(self.decode_funcsec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Table => {
                     assert_eq!(tables, None);
-                    tables = Some(self.decode_tablesec()?);
+                    tables = Some(self.decode_tablesec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Memory => {
                     assert_eq!(mems, None);
-                    mems = Some(self.decode_memsec()?);
+                    mems = Some(self.decode_memsec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Global => {
                     assert_eq!(globals, None);
-                    globals = Some(self.decode_globalsec()?);
+                    globals = Some(self.decode_globalsec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Export => {
                     assert_eq!(exports, None);
-                    exports = Some(self.decode_exportsec()?);
+                    exports = Some(self.decode_exportsec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Start => {
                     assert_eq!(start, None);
-                    start = Some(self.decode_startsec()?);
+                    start = Some(self.decode_startsec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Element => {
                     assert_eq!(elems, None);
-                    elems = Some(self.decode_elemsec()?);
+                    elems = Some(self.decode_elemsec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Code => {
                     assert_eq!(code, None);
-                    code = Some(self.decode_codesec()?);
+                    code = Some(self.decode_codesec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
                 SectionId::Data => {
                     assert_eq!(data, None);
-                    data = Some(self.decode_datasec()?);
+                    data = Some(self.decode_datasec().map_err(|err| {
+                        if err == DecodeError::UnexpectedEnd {
+                            DecodeError::UnexpectedSectionEnd
+                        } else {
+                            err
+                        }
+                    })?);
                 }
             }
         }
@@ -913,6 +979,7 @@ pub enum DecodeError {
     MagicNumberMismatch,
     VersionMismatch,
     UnexpectedEnd,
+    UnexpectedSectionEnd,
     UnknownSectionId(u8),
     FunctionDeclarationAndDefinitionLengthMismatch,
     OutOfRangeValue(Valtype),
@@ -935,7 +1002,8 @@ impl fmt::Display for DecodeError {
         match self {
             MagicNumberMismatch => write!(f, "MagicNumberMismatch:"),
             VersionMismatch => write!(f, "VersionMismatch:"),
-            UnexpectedEnd => write!(f, "VersionMismatch:"),
+            UnexpectedEnd => write!(f, "UnexpectedEnd:"),
+            UnexpectedSectionEnd => write!(f, "UnexpectedSectionEnd:"),
             UnknownSectionId(x) => write!(f, "UnknownSectionId: {}", x),
             FunctionDeclarationAndDefinitionLengthMismatch => {
                 write!(f, "FunctionDeclarationAndDefinitionLengthMismatch")
