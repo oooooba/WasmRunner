@@ -826,6 +826,7 @@ impl<'a, R: Read> Decoder<'a, R> {
                 Err(err) => return Err(err),
             };
             let size = self.decode_u32()?;
+            let before_read_bytes = self.read_bytes;
             match section_id {
                 SectionId::Custom => {
                     let (_name, _content) = self.decode_customsec(size as usize)?;
@@ -941,6 +942,10 @@ impl<'a, R: Read> Decoder<'a, R> {
                     })?);
                 }
             }
+            let after_read_bytes = self.read_bytes;
+            if after_read_bytes - before_read_bytes != size as usize {
+                return Err(DecodeError::SectionSizeMismatch);
+            }
         }
 
         let funcs = match (func_declarations, code) {
@@ -980,6 +985,7 @@ pub enum DecodeError {
     VersionMismatch,
     UnexpectedEnd,
     UnexpectedSectionEnd,
+    SectionSizeMismatch,
     UnknownSectionId(u8),
     FunctionDeclarationAndDefinitionLengthMismatch,
     OutOfRangeValue(Valtype),
@@ -1004,6 +1010,7 @@ impl fmt::Display for DecodeError {
             VersionMismatch => write!(f, "VersionMismatch:"),
             UnexpectedEnd => write!(f, "UnexpectedEnd:"),
             UnexpectedSectionEnd => write!(f, "UnexpectedSectionEnd:"),
+            SectionSizeMismatch => write!(f, "SectionSizeMismatch:"),
             UnknownSectionId(x) => write!(f, "UnknownSectionId: {}", x),
             FunctionDeclarationAndDefinitionLengthMismatch => {
                 write!(f, "FunctionDeclarationAndDefinitionLengthMismatch")
