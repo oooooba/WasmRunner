@@ -666,7 +666,7 @@ impl<'a, R: Read> Decoder<'a, R> {
             0x01 => Ok(Importdesc::Table(self.decode_tabletype()?)),
             0x02 => Ok(Importdesc::Mem(self.decode_memtype()?)),
             0x03 => Ok(Importdesc::Global(self.decode_globaltype()?)),
-            _ => unimplemented!(), // @todo raise error
+            _ => Err(DecodeError::InvalidImportKind),
         }
     }
 
@@ -998,6 +998,7 @@ pub enum DecodeError {
     InvalidUtf8Sequence(String),
     ZeroFlagExpected,
     InvalidFunc(usize),
+    InvalidImportKind,
     InvalidHeaderFormat(String),
     DecoderStateInconsistency(String),
 }
@@ -1027,6 +1028,7 @@ impl fmt::Display for DecodeError {
             InvalidUtf8Sequence(detail) => write!(f, "InvalidUtf8Sequence: {}", detail),
             ZeroFlagExpected => write!(f, "ZeroFlagExpected:"),
             InvalidFunc(x) => write!(f, "InvalidFunc: {}", x),
+            InvalidImportKind => write!(f, "InvalidImportKind:"),
             InvalidHeaderFormat(detail) => write!(f, "InvalidHeaderFormat: {}", detail),
             DecoderStateInconsistency(detail) => write!(f, "DecoderStateInconsistency: {}", detail),
         }
