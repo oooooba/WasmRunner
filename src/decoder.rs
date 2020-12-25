@@ -902,6 +902,9 @@ impl<'a, R: Read> Decoder<'a, R> {
                     })?);
                 }
                 SectionId::Start => {
+                    if start.is_some() {
+                        return Err(DecodeError::JunkAfterLastSection);
+                    }
                     assert_eq!(start, None);
                     start = Some(self.decode_startsec().map_err(|err| {
                         if err == DecodeError::UnexpectedEnd {
@@ -999,6 +1002,7 @@ pub enum DecodeError {
     ZeroFlagExpected,
     InvalidFunc(usize),
     InvalidImportKind,
+    JunkAfterLastSection,
     InvalidHeaderFormat(String),
     DecoderStateInconsistency(String),
 }
@@ -1029,6 +1033,7 @@ impl fmt::Display for DecodeError {
             ZeroFlagExpected => write!(f, "ZeroFlagExpected:"),
             InvalidFunc(x) => write!(f, "InvalidFunc: {}", x),
             InvalidImportKind => write!(f, "InvalidImportKind:"),
+            JunkAfterLastSection => write!(f, "JunkAfterLastSection:"),
             InvalidHeaderFormat(detail) => write!(f, "InvalidHeaderFormat: {}", detail),
             DecoderStateInconsistency(detail) => write!(f, "DecoderStateInconsistency: {}", detail),
         }
