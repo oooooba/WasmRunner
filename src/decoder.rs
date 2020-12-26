@@ -193,9 +193,8 @@ impl<'a, R: Read> Decoder<'a, R> {
                 let m = self.decode_u32()?;
                 (n, Some(m))
             }
-            _ => {
-                return Err(DecodeError::UnknownLimit(b));
-            }
+            _ if b < 0x80 => return Err(DecodeError::OutOfRangeValue(Valtype::I32)),
+            _ => return Err(DecodeError::InvaridIntegerRepresentation),
         };
         Ok(Limit::new(min, max))
     }
@@ -1001,7 +1000,6 @@ pub enum DecodeError {
     InvaridIntegerRepresentation,
     UnknownValtype(u8),
     UnknownFunctype(u8),
-    UnknownLimit(u8),
     UnknownMut(u8),
     UnknownExportdesc(u8),
     UnknownElemtype(u8),
@@ -1033,7 +1031,6 @@ impl fmt::Display for DecodeError {
             InvaridIntegerRepresentation => write!(f, "InvaridIntegerRepresentation:"),
             UnknownValtype(x) => write!(f, "UnknownValtype: {}", x),
             UnknownFunctype(x) => write!(f, "UnknownFunctype: {}", x),
-            UnknownLimit(x) => write!(f, "UnknownLimit: {}", x),
             UnknownMut(x) => write!(f, "UnknownMut: {}", x),
             UnknownExportdesc(x) => write!(f, "UnknownExportdesc: {}", x),
             UnknownElemtype(x) => write!(f, "UnknownElemtype: {}", x),
