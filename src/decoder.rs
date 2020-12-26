@@ -89,7 +89,7 @@ impl<'a, R: Read> Decoder<'a, R> {
                 }
             }
         }
-        Err(DecodeError::InvaridIntegerRepresentation)
+        Err(DecodeError::InvalidIntegerRepresentation)
     }
 
     fn decode_s32(&mut self) -> Result<i32, DecodeError> {
@@ -105,7 +105,7 @@ impl<'a, R: Read> Decoder<'a, R> {
             if (b & 0x80) == 0 {
                 break;
             } else if read_size == max_len {
-                return Err(DecodeError::InvaridIntegerRepresentation);
+                return Err(DecodeError::InvalidIntegerRepresentation);
             }
         }
         let shift_width = 64 - 7 * read_size;
@@ -129,7 +129,7 @@ impl<'a, R: Read> Decoder<'a, R> {
             if (b & 0x80) == 0 {
                 break;
             } else if read_size == max_len {
-                return Err(DecodeError::InvaridIntegerRepresentation);
+                return Err(DecodeError::InvalidIntegerRepresentation);
             }
         }
         let shift_width = 128 - 7 * read_size;
@@ -194,7 +194,7 @@ impl<'a, R: Read> Decoder<'a, R> {
                 (n, Some(m))
             }
             _ if b < 0x80 => return Err(DecodeError::InvalidIntegerRange),
-            _ => return Err(DecodeError::InvaridIntegerRepresentation),
+            _ => return Err(DecodeError::InvalidIntegerRepresentation),
         };
         Ok(Limit::new(min, max))
     }
@@ -997,7 +997,7 @@ pub enum DecodeError {
     UnknownSectionId(u8),
     FunctionDeclarationAndDefinitionLengthMismatch,
     InvalidIntegerRange,
-    InvaridIntegerRepresentation,
+    InvalidIntegerRepresentation,
     UnknownValtype(u8),
     UnknownFunctype(u8),
     UnknownMut(u8),
@@ -1026,7 +1026,7 @@ impl fmt::Display for DecodeError {
                 write!(f, "FunctionDeclarationAndDefinitionLengthMismatch")
             }
             InvalidIntegerRange => write!(f, "InvalidIntegerRange:"),
-            InvaridIntegerRepresentation => write!(f, "InvaridIntegerRepresentation:"),
+            InvalidIntegerRepresentation => write!(f, "InvalidIntegerRepresentation:"),
             UnknownValtype(x) => write!(f, "UnknownValtype: {}", x),
             UnknownFunctype(x) => write!(f, "UnknownFunctype: {}", x),
             UnknownMut(x) => write!(f, "UnknownMut: {}", x),
