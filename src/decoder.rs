@@ -85,7 +85,7 @@ impl<'a, R: Read> Decoder<'a, R> {
                 if result <= (u32::MAX as u64) {
                     return Ok(result as u32);
                 } else {
-                    return Err(DecodeError::OutOfRangeValue(Valtype::I32));
+                    return Err(DecodeError::InvalidIntegerRange);
                 }
             }
         }
@@ -111,7 +111,7 @@ impl<'a, R: Read> Decoder<'a, R> {
         let shift_width = 64 - 7 * read_size;
         let result = ((result << shift_width) as i64) >> shift_width;
         if !((i32::MIN as i64) <= result && result <= (i32::MAX as i64)) {
-            return Err(DecodeError::OutOfRangeValue(Valtype::I32));
+            return Err(DecodeError::InvalidIntegerRange);
         }
         Ok(result as i32)
     }
@@ -135,7 +135,7 @@ impl<'a, R: Read> Decoder<'a, R> {
         let shift_width = 128 - 7 * read_size;
         let result = ((result << shift_width) as i128) >> shift_width;
         if !((i64::MIN as i128) <= result && result <= (i64::MAX as i128)) {
-            return Err(DecodeError::OutOfRangeValue(Valtype::I64));
+            return Err(DecodeError::InvalidIntegerRange);
         }
         Ok(result as i64)
     }
@@ -193,7 +193,7 @@ impl<'a, R: Read> Decoder<'a, R> {
                 let m = self.decode_u32()?;
                 (n, Some(m))
             }
-            _ if b < 0x80 => return Err(DecodeError::OutOfRangeValue(Valtype::I32)),
+            _ if b < 0x80 => return Err(DecodeError::InvalidIntegerRange),
             _ => return Err(DecodeError::InvaridIntegerRepresentation),
         };
         Ok(Limit::new(min, max))
@@ -996,7 +996,7 @@ pub enum DecodeError {
     SectionSizeMismatch,
     UnknownSectionId(u8),
     FunctionDeclarationAndDefinitionLengthMismatch,
-    OutOfRangeValue(Valtype),
+    InvalidIntegerRange,
     InvaridIntegerRepresentation,
     UnknownValtype(u8),
     UnknownFunctype(u8),
@@ -1025,9 +1025,7 @@ impl fmt::Display for DecodeError {
             FunctionDeclarationAndDefinitionLengthMismatch => {
                 write!(f, "FunctionDeclarationAndDefinitionLengthMismatch")
             }
-            OutOfRangeValue(typ) => {
-                write!(f, "OutOfRangeValue: can represent in range of {:?}", typ)
-            }
+            InvalidIntegerRange => write!(f, "InvalidIntegerRange:"),
             InvaridIntegerRepresentation => write!(f, "InvaridIntegerRepresentation:"),
             UnknownValtype(x) => write!(f, "UnknownValtype: {}", x),
             UnknownFunctype(x) => write!(f, "UnknownFunctype: {}", x),
