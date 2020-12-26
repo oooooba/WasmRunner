@@ -89,7 +89,7 @@ impl<'a, R: Read> Decoder<'a, R> {
                 }
             }
         }
-        Err(DecodeError::OutOfRangeValue(Valtype::I32))
+        Err(DecodeError::InvaridIntegerRepresentation)
     }
 
     fn decode_s32(&mut self) -> Result<i32, DecodeError> {
@@ -105,7 +105,7 @@ impl<'a, R: Read> Decoder<'a, R> {
             if (b & 0x80) == 0 {
                 break;
             } else if read_size == max_len {
-                return Err(DecodeError::OutOfRangeValue(Valtype::I32));
+                return Err(DecodeError::InvaridIntegerRepresentation);
             }
         }
         let shift_width = 64 - 7 * read_size;
@@ -129,7 +129,7 @@ impl<'a, R: Read> Decoder<'a, R> {
             if (b & 0x80) == 0 {
                 break;
             } else if read_size == max_len {
-                return Err(DecodeError::OutOfRangeValue(Valtype::I64));
+                return Err(DecodeError::InvaridIntegerRepresentation);
             }
         }
         let shift_width = 128 - 7 * read_size;
@@ -998,6 +998,7 @@ pub enum DecodeError {
     UnknownSectionId(u8),
     FunctionDeclarationAndDefinitionLengthMismatch,
     OutOfRangeValue(Valtype),
+    InvaridIntegerRepresentation,
     UnknownValtype(u8),
     UnknownFunctype(u8),
     UnknownLimit(u8),
@@ -1029,6 +1030,7 @@ impl fmt::Display for DecodeError {
             OutOfRangeValue(typ) => {
                 write!(f, "OutOfRangeValue: can represent in range of {:?}", typ)
             }
+            InvaridIntegerRepresentation => write!(f, "InvaridIntegerRepresentation:"),
             UnknownValtype(x) => write!(f, "UnknownValtype: {}", x),
             UnknownFunctype(x) => write!(f, "UnknownFunctype: {}", x),
             UnknownLimit(x) => write!(f, "UnknownLimit: {}", x),
