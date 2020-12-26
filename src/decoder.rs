@@ -93,9 +93,10 @@ impl<'a, R: Read> Decoder<'a, R> {
     }
 
     fn decode_s32(&mut self) -> Result<i32, DecodeError> {
+        let max_len = 5;
         let mut read_size = 0;
         let mut result = 0u64;
-        for i in 0..5 {
+        for i in 0..max_len {
             let mut buf = [0; 1];
             self.read(&mut buf)?;
             read_size += 1;
@@ -103,6 +104,8 @@ impl<'a, R: Read> Decoder<'a, R> {
             result |= (b & 0x7F) << (i * 7);
             if (b & 0x80) == 0 {
                 break;
+            } else if read_size == max_len {
+                return Err(DecodeError::OutOfRangeValue(Valtype::I32));
             }
         }
         let shift_width = 64 - 7 * read_size;
@@ -114,9 +117,10 @@ impl<'a, R: Read> Decoder<'a, R> {
     }
 
     fn decode_s64(&mut self) -> Result<i64, DecodeError> {
+        let max_len = 10;
         let mut read_size = 0;
         let mut result = 0u128;
-        for i in 0..10 {
+        for i in 0..max_len {
             let mut buf = [0; 1];
             self.read(&mut buf)?;
             read_size += 1;
@@ -124,6 +128,8 @@ impl<'a, R: Read> Decoder<'a, R> {
             result |= (b & 0x7F) << (i * 7);
             if (b & 0x80) == 0 {
                 break;
+            } else if read_size == max_len {
+                return Err(DecodeError::OutOfRangeValue(Valtype::I64));
             }
         }
         let shift_width = 128 - 7 * read_size;
