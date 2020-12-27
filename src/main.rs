@@ -1,7 +1,7 @@
 use std::env;
 use std::fs;
 
-use wasm_runner::decoder::Decoder;
+use wasm_runner::decoder::{DecodeError, Decoder};
 use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
 use wasm_runner::instance::{Extarnval, Hostfunc, Moduleinst};
 use wasm_runner::module::Name;
@@ -324,6 +324,51 @@ fn run_test(wast_file_path: &str) {
                 println!("{}: trap = {:?}", func_name, result_err);
                 assert_eq!(result_err, expected_trap);
                 ctx.reset();
+            }
+            AssertMalformed {
+                module: wast::QuoteModule::Module(mut module),
+                message,
+                ..
+            } => {
+                println!("assert_malformed: {}", message);
+                let mut reader = &module.encode().unwrap()[..];
+                let mut decoder = Decoder::new(&mut reader);
+                use DecodeError::*;
+                match decoder.run().unwrap_err() {
+                    MagicNumberMismatch if message == "magic header not detected" => (),
+                    VersionMismatch if message == "unknown binary version" => (),
+                    UnexpectedEnd
+                        if message == "unexpected end" || message == "length out of bounds" =>
+                    {
+                        ()
+                    }
+                    UnexpectedSectionEnd
+                        if message == "unexpected end of section or function"
+                            || message == "unexpected end" =>
+                    {
+                        ()
+                    }
+                    SectionSizeMismatch if message == "section size mismatch" => (),
+                    UnknownSectionId(_) if message == "malformed section id" => (),
+                    FunctionDeclarationAndDefinitionLengthMismatch
+                        if message == "function and code section have inconsistent lengths" =>
+                    {
+                        ()
+                    }
+                    InvalidIntegerRange if message == "integer too large" => (),
+                    InvalidIntegerRepresentation
+                        if message == "integer representation too long" =>
+                    {
+                        ()
+                    }
+                    UnknownMut(_) if message == "malformed mutability" => (),
+                    InvalidUtf8Sequence(_) if message == "malformed UTF-8 encoding" => (),
+                    ZeroFlagExpected if message == "zero flag expected" => (),
+                    InvalidFunc(_) if message == "too many locals" => (),
+                    InvalidImportKind if message == "malformed import kind" => (),
+                    JunkAfterLastSection if message == "junk after last section" => (),
+                    err => panic!(r#"err={:?}, message="{}""#, err, message),
+                }
             }
             AssertInvalid {
                 mut module,
