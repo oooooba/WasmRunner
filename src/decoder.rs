@@ -641,7 +641,11 @@ impl<'a, R: Read> Decoder<'a, R> {
         let before_size = self.read_bytes;
         let name = self.decode_name()?;
         let after_size = self.read_bytes;
-        let content_size = size - (after_size - before_size);
+        let name_len = after_size - before_size;
+        if size < name_len {
+            return Err(DecodeError::UnexpectedEnd);
+        }
+        let content_size = size - name_len;
         let mut content = Vec::new();
         for _ in 0..content_size {
             content.push(self.decode_byte()?);
