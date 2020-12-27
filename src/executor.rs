@@ -1216,7 +1216,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 
         let dend = dofst + datum.init().len();
         if dend > meminst.size() {
-            unimplemented!() // @todo raise Error
+            return Err(ExecutionError::DataSegmentSizeMismatch);
         }
 
         for (i, &b) in datum.init().iter().enumerate() {
@@ -1257,6 +1257,7 @@ pub enum ExecutionError {
     IndirectCallTypeMismatch,
     InvalidConversionToInteger,
     UninitializedElement,
+    DataSegmentSizeMismatch,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1293,6 +1294,7 @@ impl fmt::Display for ExecutionError {
             IndirectCallTypeMismatch => write!(f, "IndirectCallTypeMismatch:"),
             InvalidConversionToInteger => write!(f, "InvalidConversionToInteger:"),
             UninitializedElement => write!(f, "UninitializedElement:"),
+            DataSegmentSizeMismatch => write!(f, "DataSegmentSizeMismatch:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }
