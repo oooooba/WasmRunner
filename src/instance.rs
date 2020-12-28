@@ -90,11 +90,15 @@ impl Store {
                 .resolve(Some(import.module()), import.name())
                 .ok_or(ExecutionError::ImportResolutionFail)?;
             match (content, import.desc()) {
-                (Extarnval::Func(_), Importdesc::Func(_)) => (),
+                (Extarnval::Func(addr), Importdesc::Func(idx))
+                    if self.funcs[addr.to_usize()].typ() == &module.types()[idx.to_usize()] =>
+                {
+                    ()
+                }
                 (Extarnval::Table(_), Importdesc::Table(_)) => (),
                 (Extarnval::Mem(_), Importdesc::Mem(_)) => (),
                 (Extarnval::Global(addr), Importdesc::Global(_)) => imported_globals.push(*addr),
-                _ => unimplemented!(),
+                _ => return Err(ExecutionError::IncompatibleImportType),
             }
         }
         moduleinst.update_globaladdrs(imported_globals);
@@ -240,11 +244,15 @@ impl Store {
                 .resolve(Some(import.module()), import.name())
                 .unwrap(); // @todo
             match (content, import.desc()) {
-                (Extarnval::Func(addr), Importdesc::Func(_)) => funcaddrs_mod.push(*addr),
+                (Extarnval::Func(addr), Importdesc::Func(idx))
+                    if self.funcs[addr.to_usize()].typ() == &module.types()[idx.to_usize()] =>
+                {
+                    funcaddrs_mod.push(*addr)
+                }
                 (Extarnval::Table(addr), Importdesc::Table(_)) => tableaddrs_mod.push(*addr),
                 (Extarnval::Mem(addr), Importdesc::Mem(_)) => memaddrs_mod.push(*addr),
                 (Extarnval::Global(addr), Importdesc::Global(_)) => globaladdrs_mod.push(*addr),
-                _ => unimplemented!(),
+                _ => return Err(ExecutionError::IncompatibleImportType),
             }
         }
 
