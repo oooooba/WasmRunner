@@ -165,6 +165,10 @@ impl Globaltype {
     pub fn mutability(&self) -> &Mutability {
         &self.mutability
     }
+
+    pub fn matches(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

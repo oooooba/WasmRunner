@@ -105,7 +105,11 @@ impl Store {
                 {
                     ()
                 }
-                (Extarnval::Global(addr), Importdesc::Global(_)) => imported_globals.push(*addr),
+                (Extarnval::Global(addr), Importdesc::Global(ref globaltype))
+                    if self.globals[addr.to_usize()].typ().matches(globaltype) =>
+                {
+                    imported_globals.push(*addr)
+                }
                 _ => return Err(ExecutionError::IncompatibleImportType),
             }
         }
@@ -202,8 +206,7 @@ impl Store {
         val: Value,
     ) -> Result<Globaladdr, ExecutionError> {
         let addr = Globaladdr(Address(self.globals.len()));
-        let mutability = globaltype.mutability().clone();
-        let globalinst = Globalinst::new(val, mutability);
+        let globalinst = Globalinst::new(globaltype.clone(), val);
         self.globals.push(globalinst);
         Ok(addr)
     }
@@ -266,7 +269,11 @@ impl Store {
                 {
                     memaddrs_mod.push(*addr)
                 }
-                (Extarnval::Global(addr), Importdesc::Global(_)) => globaladdrs_mod.push(*addr),
+                (Extarnval::Global(addr), Importdesc::Global(ref globaltype))
+                    if self.globals[addr.to_usize()].typ().matches(globaltype) =>
+                {
+                    globaladdrs_mod.push(*addr)
+                }
                 _ => return Err(ExecutionError::IncompatibleImportType),
             }
         }
@@ -655,13 +662,17 @@ impl Meminst {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Globalinst {
+    typ: Globaltype,
     value: Value,
-    mutability: Mutability,
 }
 
 impl Globalinst {
-    pub fn new(value: Value, mutability: Mutability) -> Self {
-        Self { value, mutability }
+    pub fn new(typ: Globaltype, value: Value) -> Self {
+        Self { typ, value }
+    }
+
+    fn typ(&self) -> &Globaltype {
+        &self.typ
     }
 
     pub fn value(&self) -> Value {
