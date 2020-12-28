@@ -514,16 +514,16 @@ fn register_spectest_hostfunc(ctx: &mut Context) {
 fn register_spectest_global(ctx: &mut Context) {
     let modulename = Name::new("spectest".to_string());
     let targets = vec![
-        ("global_i32", ValueKind::I32(666), Mutability::Var),
+        ("global_i32", ValueKind::I32(666), Mutability::Const),
         (
             "global_f32",
             ValueKind::F32(F32Bytes::new(666.6)),
-            Mutability::Var,
+            Mutability::Const,
         ),
         (
             "global_f64",
             ValueKind::F64(F64Bytes::new(666.6)),
-            Mutability::Var,
+            Mutability::Const,
         ),
     ];
     for (name, valuekind, mutability) in targets {
