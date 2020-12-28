@@ -88,7 +88,7 @@ impl Store {
             let content = self
                 .name_table
                 .resolve(Some(import.module()), import.name())
-                .unwrap(); // @todo
+                .ok_or(ExecutionError::ImportResolutionFail)?;
             match (content, import.desc()) {
                 (Extarnval::Func(_), Importdesc::Func(_)) => (),
                 (Extarnval::Table(_), Importdesc::Table(_)) => (),

@@ -1259,6 +1259,7 @@ pub enum ExecutionError {
     UninitializedElement,
     DataSegmentSizeMismatch,
     ElementsSegmentSizeMismatch,
+    ImportResolutionFail,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1297,6 +1298,7 @@ impl fmt::Display for ExecutionError {
             UninitializedElement => write!(f, "UninitializedElement:"),
             DataSegmentSizeMismatch => write!(f, "DataSegmentSizeMismatch:"),
             ElementsSegmentSizeMismatch => write!(f, "ElementsSegmentSizeMismatch:"),
+            ImportResolutionFail => write!(f, "ImportResolutionFail:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }
