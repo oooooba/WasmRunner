@@ -903,8 +903,6 @@ impl TypeContext {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ValidationError {
-    //Limit(String),
-    Module(String),
     TypeMismatch,
     MemoryAccessAlignmentViolation,
     InvalidLabel,
