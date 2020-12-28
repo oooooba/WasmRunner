@@ -1194,7 +1194,7 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 
         let eend = eo + elem.init().len();
         if eend > tableinst.elem().len() {
-            unimplemented!() // @todo raise Error
+            return Err(ExecutionError::ElementsSegmentSizeMismatch);
         }
 
         for (j, funcidx) in elem.init().iter().enumerate() {
@@ -1258,6 +1258,7 @@ pub enum ExecutionError {
     InvalidConversionToInteger,
     UninitializedElement,
     DataSegmentSizeMismatch,
+    ElementsSegmentSizeMismatch,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1295,6 +1296,7 @@ impl fmt::Display for ExecutionError {
             InvalidConversionToInteger => write!(f, "InvalidConversionToInteger:"),
             UninitializedElement => write!(f, "UninitializedElement:"),
             DataSegmentSizeMismatch => write!(f, "DataSegmentSizeMismatch:"),
+            ElementsSegmentSizeMismatch => write!(f, "ElementsSegmentSizeMismatch:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }
