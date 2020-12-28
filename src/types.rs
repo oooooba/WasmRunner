@@ -106,6 +106,10 @@ impl Memtype {
     pub fn limit(&self) -> &Limit {
         &self.limit
     }
+
+    pub fn matches(&self, other: &Self) -> bool {
+        self.limit.matches(other.limit())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

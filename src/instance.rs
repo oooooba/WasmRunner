@@ -100,7 +100,11 @@ impl Store {
                 {
                     ()
                 }
-                (Extarnval::Mem(_), Importdesc::Mem(_)) => (),
+                (Extarnval::Mem(addr), Importdesc::Mem(ref memtype))
+                    if self.mems[addr.to_usize()].typ().matches(memtype) =>
+                {
+                    ()
+                }
                 (Extarnval::Global(addr), Importdesc::Global(_)) => imported_globals.push(*addr),
                 _ => return Err(ExecutionError::IncompatibleImportType),
             }
@@ -186,9 +190,8 @@ impl Store {
     pub fn allocmem(&mut self, memtype: &Memtype) -> Result<Memaddr, ExecutionError> {
         let addr = Memaddr(Address(self.mems.len()));
         let n = memtype.limit().min() as usize;
-        let m = *memtype.limit().max();
         let data = vec![0u8; n * PAGE_SIZE];
-        let meminst = Meminst::new(data, m);
+        let meminst = Meminst::new(memtype.clone(), data);
         self.mems.push(meminst);
         Ok(addr)
     }
@@ -258,7 +261,11 @@ impl Store {
                 {
                     tableaddrs_mod.push(*addr)
                 }
-                (Extarnval::Mem(addr), Importdesc::Mem(_)) => memaddrs_mod.push(*addr),
+                (Extarnval::Mem(addr), Importdesc::Mem(ref memtype))
+                    if self.mems[addr.to_usize()].typ().matches(memtype) =>
+                {
+                    memaddrs_mod.push(*addr)
+                }
                 (Extarnval::Global(addr), Importdesc::Global(_)) => globaladdrs_mod.push(*addr),
                 _ => return Err(ExecutionError::IncompatibleImportType),
             }
@@ -496,13 +503,19 @@ impl Tableinst {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Meminst {
+    typ: Memtype,
     data: Vec<u8>,
     max: Option<u32>,
 }
 
 impl Meminst {
-    pub fn new(data: Vec<u8>, max: Option<u32>) -> Self {
-        Self { data, max }
+    pub fn new(typ: Memtype, data: Vec<u8>) -> Self {
+        let max = *typ.limit().max();
+        Self { typ, data, max }
+    }
+
+    fn typ(&self) -> &Memtype {
+        &self.typ
     }
 
     pub fn size(&self) -> usize {
