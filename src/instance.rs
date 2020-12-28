@@ -95,7 +95,11 @@ impl Store {
                 {
                     ()
                 }
-                (Extarnval::Table(_), Importdesc::Table(_)) => (),
+                (Extarnval::Table(addr), Importdesc::Table(ref tabletype))
+                    if self.tables[addr.to_usize()].typ().matches(tabletype) =>
+                {
+                    ()
+                }
                 (Extarnval::Mem(_), Importdesc::Mem(_)) => (),
                 (Extarnval::Global(addr), Importdesc::Global(_)) => imported_globals.push(*addr),
                 _ => return Err(ExecutionError::IncompatibleImportType),
@@ -174,7 +178,7 @@ impl Store {
     pub fn alloctable(&mut self, tabletype: &Tabletype) -> Result<Tableaddr, ExecutionError> {
         let addr = Tableaddr(Address(self.tables.len()));
         let elem = vec![None; tabletype.limit().min() as usize];
-        let tableinst = Tableinst::new(elem, *tabletype.limit().max());
+        let tableinst = Tableinst::new(tabletype.clone(), elem);
         self.tables.push(tableinst);
         Ok(addr)
     }
@@ -249,7 +253,11 @@ impl Store {
                 {
                     funcaddrs_mod.push(*addr)
                 }
-                (Extarnval::Table(addr), Importdesc::Table(_)) => tableaddrs_mod.push(*addr),
+                (Extarnval::Table(addr), Importdesc::Table(ref tabletype))
+                    if self.tables[addr.to_usize()].typ().matches(tabletype) =>
+                {
+                    tableaddrs_mod.push(*addr)
+                }
                 (Extarnval::Mem(addr), Importdesc::Mem(_)) => memaddrs_mod.push(*addr),
                 (Extarnval::Global(addr), Importdesc::Global(_)) => globaladdrs_mod.push(*addr),
                 _ => return Err(ExecutionError::IncompatibleImportType),
@@ -464,13 +472,17 @@ impl Funcinst {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tableinst {
+    typ: Tabletype,
     elem: Vec<Option<Funcaddr>>,
-    max: Option<u32>,
 }
 
 impl Tableinst {
-    pub fn new(elem: Vec<Option<Funcaddr>>, max: Option<u32>) -> Self {
-        Self { elem, max }
+    pub fn new(typ: Tabletype, elem: Vec<Option<Funcaddr>>) -> Self {
+        Self { typ, elem }
+    }
+
+    fn typ(&self) -> &Tabletype {
+        &self.typ
     }
 
     pub fn elem(&self) -> &Vec<Option<Funcaddr>> {

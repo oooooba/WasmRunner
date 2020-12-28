@@ -74,6 +74,23 @@ impl Limit {
     pub fn max(&self) -> &Option<u32> {
         &self.max
     }
+
+    pub fn matches(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Limit { min: n1, .. }, Limit { min: n2, max: None }) if n1 >= n2 => true,
+            (
+                Limit {
+                    min: n1,
+                    max: Some(m1),
+                },
+                Limit {
+                    min: n2,
+                    max: Some(m2),
+                },
+            ) if n1 >= n2 && m1 <= m2 => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,11 +126,21 @@ impl Tabletype {
     pub fn elemtype(&self) -> &Elemtype {
         &self.elemtype
     }
+
+    pub fn matches(&self, other: &Self) -> bool {
+        self.limit.matches(other.limit()) && self.elemtype.matches(other.elemtype())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Elemtype {
     Funcref,
+}
+
+impl Elemtype {
+    pub fn matches(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
