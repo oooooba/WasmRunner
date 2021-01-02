@@ -404,6 +404,21 @@ fn run_test(wast_file_path: &str) {
                 assert_eq!(result_err, expected_error);
                 ctx.reset();
             }
+            AssertUnlinkable {
+                mut module,
+                message,
+                ..
+            } => {
+                println!("assert_unlinkable: {}", message);
+                use ExecutionError::*;
+                match run_instantiate_action(&mut ctx, &mut module).unwrap_err() {
+                    DataSegmentSizeMismatch if message == "data segment does not fit" => (),
+                    ElementsSegmentSizeMismatch if message == "elements segment does not fit" => (),
+                    ImportResolutionFail if message == "unknown import" => (),
+                    IncompatibleImportType if message == "incompatible import type" => (),
+                    err => panic!(r#"err={:?}, message="{}""#, err, message),
+                }
+            }
             _ => (),
         }
     }
