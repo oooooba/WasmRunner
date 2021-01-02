@@ -95,7 +95,7 @@ fn main() {
     run_test(&format!("{}/utf8-invalid-encoding.wast", base_dir_path));
 }
 
-fn run_invoke_ation<'a>(
+fn run_invoke_action<'a>(
     ctx: &mut Context,
     module: Option<Id<'a>>,
     name: &'a str,
@@ -184,7 +184,7 @@ fn run_test(wast_file_path: &str) {
             Invoke(WastInvoke {
                 name, args, module, ..
             }) => {
-                run_invoke_ation(&mut ctx, module, name, args).unwrap();
+                run_invoke_action(&mut ctx, module, name, args).unwrap();
             }
             AssertReturn { exec, results, .. } => {
                 let (expected_result, should_replace_nan): (Vec<Value>, Vec<bool>) = results
@@ -232,7 +232,7 @@ fn run_test(wast_file_path: &str) {
                         let (func_name, arguments) = (name, args);
 
                         let WasmRunnerResult::Values(res) =
-                            run_invoke_ation(&mut ctx, module, func_name, arguments).unwrap();
+                            run_invoke_action(&mut ctx, module, func_name, arguments).unwrap();
                         let res: Vec<Value> = if should_replace_nan.iter().any(|b| *b) {
                             res.iter()
                                 .map(|v| match v.kind() {
