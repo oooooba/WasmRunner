@@ -38,7 +38,7 @@ impl NameTable {
             module_name.map(|name| name.make_clone()),
             content_name.make_clone(),
         ));
-        if result.is_some() || module_name.is_none() {
+        if result.is_some() || module_name.is_some() {
             return result;
         }
         self.table.get(&(None, content_name.make_clone()))
