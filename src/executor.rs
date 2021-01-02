@@ -186,6 +186,8 @@ pub struct Context {
     store: Store,
     stack: Stack,
     current_frame: Frame,
+    frame_limit: Option<usize>,
+    frame_depth: usize,
     dummy_frame: Frame,
     code_addr: CodeAddr,
 }
@@ -197,6 +199,8 @@ impl Context {
             store: Store::new(),
             stack: Stack::new(),
             current_frame: dummy_frame.make_clone(),
+            frame_limit: None,
+            frame_depth: 0,
             dummy_frame,
             code_addr: 0,
         }
@@ -205,6 +209,8 @@ impl Context {
     pub fn reset(&mut self) {
         self.stack = Stack::new();
         self.current_frame = self.dummy_frame.make_clone();
+        self.frame_limit = None;
+        self.frame_depth = 0;
     }
 
     pub fn stack(&self) -> &Stack {
@@ -225,6 +231,26 @@ impl Context {
 
     pub fn update_frame(&mut self, frame: Frame) {
         self.current_frame = frame;
+    }
+
+    pub fn frame_limit(&mut self) -> Option<usize> {
+        self.frame_limit
+    }
+
+    pub fn set_frame_limit(&mut self, frame_limit: Option<usize>) {
+        self.frame_limit = frame_limit;
+    }
+
+    fn frame_depth(&mut self) -> usize {
+        self.frame_depth
+    }
+
+    fn increment_frame_depth(&mut self) {
+        self.frame_depth += 1;
+    }
+
+    fn decrement_frame_depth(&mut self) {
+        self.frame_depth -= 1;
     }
 
     pub fn code_addr(&self) -> CodeAddr {
@@ -1279,6 +1305,7 @@ pub enum ExecutionError {
     ElementsSegmentSizeMismatch,
     ImportResolutionFail,
     IncompatibleImportType,
+    FrameExhaustion,
     ExecutorStateInconsistency(&'static str),
 }
 
@@ -1319,6 +1346,7 @@ impl fmt::Display for ExecutionError {
             ElementsSegmentSizeMismatch => write!(f, "ElementsSegmentSizeMismatch:"),
             ImportResolutionFail => write!(f, "ImportResolutionFail:"),
             IncompatibleImportType => write!(f, "IncompatibleImportType:"),
+            FrameExhaustion => write!(f, "FrameExhaustion:"),
             ExecutorStateInconsistency(detail) => {
                 write!(f, "ExecutorStateInconsistency: {}", detail)
             }
@@ -1521,6 +1549,12 @@ impl Executor {
         mut code: Vec<Code>,
         return_code_addr: CodeAddr,
     ) -> Result<(), ExecutionError> {
+        if let Some(frame_limit) = ctx.frame_limit() {
+            if ctx.frame_depth() >= frame_limit {
+                return Err(ExecutionError::FrameExhaustion);
+            }
+        }
+
         if param_size + local_var_types.len() > u32::MAX as usize {
             return Err(ExecutionError::StackOperationFailure(
                 "number of locals reaches limitation",
@@ -1558,6 +1592,7 @@ impl Executor {
         );
         ctx.stack_mut().push_frame(frame.make_clone())?;
         ctx.update_frame(frame);
+        ctx.increment_frame_depth();
 
         mem::swap(&mut self.code, &mut code);
         self.code_stack.push(code);
@@ -1584,6 +1619,7 @@ impl Executor {
         let frame = ctx.stack_mut().pop_frame()?;
         let cont_code_addr = frame.return_code_addr();
         ctx.update_frame(frame.prev_frame().unwrap());
+        ctx.decrement_frame_depth();
         ctx.update_code_addr(cont_code_addr);
 
         while let Some(ret) = result.pop() {
