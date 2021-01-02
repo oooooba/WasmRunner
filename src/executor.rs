@@ -1181,11 +1181,12 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
 
     let moduleinst = ctx.store.instantiate(module, initial_global_values)?;
 
+    let mut eos = Vec::new();
     for elem in module.elems() {
         let eoval = executor.eval(ctx, Some(moduleinst.make_clone()), elem.offset())?;
         let eo = match eoval.kind() {
             ValueKind::I32(n) => n as usize,
-            _ => unimplemented!(), // @todo raise Error
+            _ => unreachable!(),
         };
 
         let tableidx = elem.table();
@@ -1197,17 +1198,15 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
             return Err(ExecutionError::ElementsSegmentSizeMismatch);
         }
 
-        for (j, funcidx) in elem.init().iter().enumerate() {
-            let funcaddr = moduleinst.resolve_funcaddr(*funcidx)?;
-            tableinst.elem_mut()[eo + j] = Some(funcaddr);
-        }
+        eos.push(eo);
     }
 
+    let mut dofsts = Vec::new();
     for datum in module.data() {
         let doval = executor.eval(ctx, Some(moduleinst.make_clone()), datum.offset())?;
         let dofst = match doval.kind() {
             ValueKind::I32(n) => n as usize,
-            _ => unimplemented!(), // @todo raise Error
+            _ => unreachable!(),
         };
 
         let memidx = datum.data();
@@ -1218,6 +1217,25 @@ pub fn instantiate(ctx: &mut Context, module: &Module) -> Result<Moduleinst, Exe
         if dend > meminst.size() {
             return Err(ExecutionError::DataSegmentSizeMismatch);
         }
+
+        dofsts.push(dofst);
+    }
+
+    for (elem, eo) in module.elems().iter().zip(eos) {
+        let tableidx = elem.table();
+        let tableaddr = moduleinst.resolve_tableaddr(tableidx)?;
+        let tableinst = &mut ctx.store.tables_mut()[tableaddr.to_usize()];
+
+        for (j, funcidx) in elem.init().iter().enumerate() {
+            let funcaddr = moduleinst.resolve_funcaddr(*funcidx)?;
+            tableinst.elem_mut()[eo + j] = Some(funcaddr);
+        }
+    }
+
+    for (datum, dofst) in module.data().iter().zip(dofsts) {
+        let memidx = datum.data();
+        let memaddr = moduleinst.resolve_memaddr(memidx)?;
+        let meminst = &mut ctx.store.mems_mut()[memaddr.to_usize()];
 
         for (i, &b) in datum.init().iter().enumerate() {
             meminst.write_i8(dofst + i, b)?;
