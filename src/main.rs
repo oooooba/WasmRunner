@@ -404,6 +404,23 @@ fn run_test(wast_file_path: &str) {
                 assert_eq!(result_err, expected_error);
                 ctx.reset();
             }
+            AssertExhaustion {
+                call:
+                    wast::WastInvoke {
+                        name, args, module, ..
+                    },
+                message,
+                ..
+            } => {
+                println!("assert_exhaustion: {}", message);
+                ctx.set_frame_limit(Some(100));
+                use ExecutionError::*;
+                match run_invoke_action(&mut ctx, module, name, args).unwrap_err() {
+                    FrameExhaustion if message == "call stack exhausted" => (),
+                    err => panic!(r#"err={:?}, message="{}""#, err, message),
+                }
+                ctx.reset();
+            }
             AssertUnlinkable {
                 mut module,
                 message,
