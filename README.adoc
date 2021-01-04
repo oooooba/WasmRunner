@@ -1,0 +1,16 @@
+= WasmRunner - A WebAssembly interpreter library
+
+== Set up
+
+....
+$ git clone https://github.com/oooooba/WasmRunner
+$ cd WasmRunner
+$ cargo build
+$ git clone https://github.com/WebAssembly/testsuite /tmp/testsuit
+....
+
+== Run spectests
+
+....
+$ WASM_RUNNER_SPECTESTS_ROOT=/tmp/testsuit cargo test -- --nocapture
+....
