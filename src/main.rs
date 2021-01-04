@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::path::Path;
 
 use wasm_runner::decoder::{DecodeError, Decoder};
 use wasm_runner::executor::{instantiate, invoke, Context, ExecutionError};
@@ -18,81 +19,18 @@ use wast::{
     WastExecute, WastInvoke,
 };
 
+const SPECTESTS_ROOT: &str = "WASM_RUNNER_SPECTESTS_ROOT";
+
 fn main() {
-    let base_dir_path = env::args().skip(1).next().expect("path to wast directory");
-    run_test(&format!("{}/address.wast", base_dir_path));
-    run_test(&format!("{}/align.wast", base_dir_path));
-    run_test(&format!("{}/binary-leb128.wast", base_dir_path));
-    run_test(&format!("{}/binary.wast", base_dir_path));
-    run_test(&format!("{}/block.wast", base_dir_path));
-    run_test(&format!("{}/br.wast", base_dir_path));
-    run_test(&format!("{}/br_if.wast", base_dir_path));
-    run_test(&format!("{}/br_table.wast", base_dir_path));
-    run_test(&format!("{}/call.wast", base_dir_path));
-    run_test(&format!("{}/call_indirect.wast", base_dir_path));
-    run_test(&format!("{}/comments.wast", base_dir_path));
-    run_test(&format!("{}/const.wast", base_dir_path));
-    run_test(&format!("{}/conversions.wast", base_dir_path));
-    run_test(&format!("{}/custom.wast", base_dir_path));
-    run_test(&format!("{}/data.wast", base_dir_path));
-    run_test(&format!("{}/elem.wast", base_dir_path));
-    run_test(&format!("{}/endianness.wast", base_dir_path));
-    run_test(&format!("{}/exports.wast", base_dir_path));
-    run_test(&format!("{}/f32.wast", base_dir_path));
-    run_test(&format!("{}/f32_bitwise.wast", base_dir_path));
-    run_test(&format!("{}/f32_cmp.wast", base_dir_path));
-    run_test(&format!("{}/f64.wast", base_dir_path));
-    run_test(&format!("{}/f64_bitwise.wast", base_dir_path));
-    run_test(&format!("{}/f64_cmp.wast", base_dir_path));
-    run_test(&format!("{}/fac.wast", base_dir_path));
-    run_test(&format!("{}/float_exprs.wast", base_dir_path));
-    run_test(&format!("{}/float_literals.wast", base_dir_path));
-    run_test(&format!("{}/float_memory.wast", base_dir_path));
-    run_test(&format!("{}/float_misc.wast", base_dir_path));
-    run_test(&format!("{}/forward.wast", base_dir_path));
-    run_test(&format!("{}/func.wast", base_dir_path));
-    run_test(&format!("{}/func_ptrs.wast", base_dir_path));
-    run_test(&format!("{}/global.wast", base_dir_path));
-    run_test(&format!("{}/i32.wast", base_dir_path));
-    run_test(&format!("{}/i64.wast", base_dir_path));
-    run_test(&format!("{}/if.wast", base_dir_path));
-    run_test(&format!("{}/imports.wast", base_dir_path));
-    run_test(&format!("{}/inline-module.wast", base_dir_path));
-    run_test(&format!("{}/int_exprs.wast", base_dir_path));
-    run_test(&format!("{}/int_literals.wast", base_dir_path));
-    run_test(&format!("{}/labels.wast", base_dir_path));
-    run_test(&format!("{}/left-to-right.wast", base_dir_path));
-    run_test(&format!("{}/linking.wast", base_dir_path));
-    run_test(&format!("{}/load.wast", base_dir_path));
-    run_test(&format!("{}/local_get.wast", base_dir_path));
-    run_test(&format!("{}/local_set.wast", base_dir_path));
-    run_test(&format!("{}/local_tee.wast", base_dir_path));
-    run_test(&format!("{}/loop.wast", base_dir_path));
-    run_test(&format!("{}/memory.wast", base_dir_path));
-    run_test(&format!("{}/memory_grow.wast", base_dir_path));
-    run_test(&format!("{}/memory_redundancy.wast", base_dir_path));
-    run_test(&format!("{}/memory_size.wast", base_dir_path));
-    run_test(&format!("{}/memory_trap.wast", base_dir_path));
-    run_test(&format!("{}/names.wast", base_dir_path));
-    run_test(&format!("{}/nop.wast", base_dir_path));
-    run_test(&format!("{}/return.wast", base_dir_path));
-    run_test(&format!("{}/select.wast", base_dir_path));
-    run_test(&format!("{}/skip-stack-guard-page.wast", base_dir_path));
-    run_test(&format!("{}/stack.wast", base_dir_path));
-    run_test(&format!("{}/start.wast", base_dir_path));
-    run_test(&format!("{}/store.wast", base_dir_path));
-    run_test(&format!("{}/switch.wast", base_dir_path));
-    run_test(&format!("{}/table.wast", base_dir_path));
-    run_test(&format!("{}/token.wast", base_dir_path));
-    run_test(&format!("{}/traps.wast", base_dir_path));
-    run_test(&format!("{}/type.wast", base_dir_path));
-    run_test(&format!("{}/unreachable.wast", base_dir_path));
-    run_test(&format!("{}/unreached-invalid.wast", base_dir_path));
-    run_test(&format!("{}/unwind.wast", base_dir_path));
-    run_test(&format!("{}/utf8-custom-section-id.wast", base_dir_path));
-    run_test(&format!("{}/utf8-import-field.wast", base_dir_path));
-    run_test(&format!("{}/utf8-import-module.wast", base_dir_path));
-    run_test(&format!("{}/utf8-invalid-encoding.wast", base_dir_path));
+    let base_dir_path = env::var(SPECTESTS_ROOT).unwrap();
+    for entry in fs::read_dir(base_dir_path).unwrap() {
+        let path = entry.unwrap().path();
+        if let Some(ext) = path.extension() {
+            if ext == "wast" && path.is_file() {
+                run_test(&path);
+            }
+        }
+    }
 }
 
 fn run_invoke_action<'a>(
@@ -154,8 +92,8 @@ fn run_validate_action<'a>(module: &mut Module<'a>) -> Result<(), ValidationErro
     validate(&module)
 }
 
-fn run_test(wast_file_path: &str) {
-    println!("[[test]] {}", wast_file_path);
+fn run_test(wast_file_path: &Path) {
+    println!("[[test]] {:?}", wast_file_path.as_os_str());
     let wast_text = fs::read_to_string(wast_file_path).unwrap();
     let buf = ParseBuffer::new(&wast_text).unwrap();
     let wast_ast = parser::parse::<Wast>(&buf).unwrap();
